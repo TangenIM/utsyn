@@ -1,24 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/db';
+import { getAuthUser } from '@/lib/auth';
+import { id, InputError, apiError } from '@/lib/validation';
 
-export async function DELETE(
-    _request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { getAuthUser } = await import('@/lib/auth');
-        const user = await getAuthUser();
-        if (!user || user.role !== 'admin') {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { id } = await params;
+        if ((await getAuthUser())?.role !== 'admin') return Response.json({ error: 'Admin access required' }, { status: 403 });
         const sql = await getDb();
-        await sql`DELETE FROM menu_categories WHERE id = ${id}`;
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Menu category DELETE error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
+        const result = await sql`DELETE FROM menu_categories WHERE id = ${id((await params).id)}`;
+        if (!result.count) throw new InputError('Category not found', 404);
+        return Response.json({ success: true });
+    } catch (error) { return apiError(error); }
 }

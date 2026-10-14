@@ -1,8 +1,13 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
+import getDb from './db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'utsyn-default-secret-change-in-production-2026';
+function jwtSecret() {
+    const secret = process.env.JWT_SECRET;
+    if (!secret || secret.length < 32) throw new Error('Set JWT_SECRET to at least 32 random characters');
+    return secret;
+}
 const COOKIE_NAME = 'utsyn_auth';
 
 export interface JwtPayload {
@@ -20,12 +25,13 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export function createToken(payload: JwtPayload): string {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
+    return jwt.sign(payload, jwtSecret(), { expiresIn: '8h', algorithm: 'HS256' });
 }
 
 export function verifyToken(token: string): JwtPayload | null {
     try {
-        return jwt.verify(token, JWT_SECRET) as JwtPayload;
+        const payload = jwt.verify(token, jwtSecret(), { algorithms: ['HS256'] }) as JwtPayload;
+        return Number.isSafeInteger(payload.userId) && ['admin', 'staff'].includes(payload.role) ? payload : null;
     } catch {
         return null;
     }
@@ -35,7 +41,11 @@ export async function getAuthUser(): Promise<JwtPayload | null> {
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;
     if (!token) return null;
-    return verifyToken(token);
+    const payload = verifyToken(token);
+    if (!payload) return null;
+    const sql = await getDb();
+    const [user] = await sql`SELECT id, username, role FROM users WHERE id = ${payload.userId}`;
+    return user ? { userId: user.id, username: user.username, role: user.role } : null;
 }
 
 export function getTokenCookieOptions(token: string) {

@@ -1,5 +1,6 @@
 'use client';
 
+import Modal from '@/components/Modal';
 import React, { useEffect, useState, useCallback } from 'react';
 
 interface User {
@@ -122,8 +123,8 @@ export default function BrukerePage() {
             {formError && <div className="login-error">{formError}</div>}
             <div className="admin-form-grid">
               <div className="form-group">
-                <label className="form-label">Visningsnavn</label>
-                <input
+                <label htmlFor="brukere-field-1" className="form-label">Visningsnavn</label>
+                <input id="brukere-field-1"
                   className="form-input"
                   value={newDisplayName}
                   onChange={e => setNewDisplayName(e.target.value)}
@@ -131,8 +132,8 @@ export default function BrukerePage() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Brukernavn *</label>
-                <input
+                <label htmlFor="brukere-field-2" className="form-label">Brukernavn *</label>
+                <input id="brukere-field-2"
                   className="form-input"
                   value={newUsername}
                   onChange={e => setNewUsername(e.target.value)}
@@ -142,20 +143,20 @@ export default function BrukerePage() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Passord *</label>
-                <input
+                <label htmlFor="brukere-field-3" className="form-label">Passord *</label>
+                <input id="brukere-field-3"
                   className="form-input"
                   type="password"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   required
-                  minLength={6}
-                  placeholder="Minst 6 tegn"
+                  minLength={12}
+                  placeholder="Minst 12 tegn"
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Rolle</label>
-                <select className="form-select" value={newRole} onChange={e => setNewRole(e.target.value as 'admin' | 'staff')}>
+                <label htmlFor="brukere-field-4" className="form-label">Rolle</label>
+                <select id="brukere-field-4" className="form-select" value={newRole} onChange={e => setNewRole(e.target.value as 'admin' | 'staff')}>
                   <option value="staff">Ansatt</option>
                   <option value="admin">Administrator</option>
                 </select>
@@ -207,7 +208,7 @@ export default function BrukerePage() {
 
       {/* Confirmation Modal */}
       {confirmDialog.isOpen && (
-        <div className="modal-overlay">
+        <Modal title="Bekreft handling" onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}>
           <div className="modal-content" style={{ maxWidth: '400px' }}>
             <h3 style={{ marginBottom: 'var(--space-md)' }}>Bekreft handling</h3>
             <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-xl)' }}>
@@ -228,19 +229,10 @@ export default function BrukerePage() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       <style jsx>{`
-        .modal-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-        }
         
         .modal-content {
           background: var(--color-bg-card);

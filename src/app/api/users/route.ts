@@ -1,56 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/db';
 import { hashPassword, getAuthUser } from '@/lib/auth';
+import { text, password, InputError, apiError } from '@/lib/validation';
 
 export async function GET() {
     try {
-        const user = await getAuthUser();
-        if (!user || user.role !== 'admin') {
-            return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-        }
-
+        if ((await getAuthUser())?.role !== 'admin') return Response.json({ error: 'Admin access required' }, { status: 403 });
         const sql = await getDb();
-        const rows = await sql`SELECT id, username, display_name, role, created_at FROM users ORDER BY created_at DESC`;
-        return NextResponse.json(rows);
-    } catch (error) {
-        console.error('Users GET error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
+        return Response.json(await sql`SELECT id,username,display_name,role,created_at FROM users ORDER BY id DESC`, { headers: { 'Cache-Control': 'no-store' } });
+    } catch (error) { return apiError(error); }
 }
-
 export async function POST(request: NextRequest) {
     try {
-        const user = await getAuthUser();
-        if (!user || user.role !== 'admin') {
-            return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-        }
-
+        if ((await getAuthUser())?.role !== 'admin') return Response.json({ error: 'Admin access required' }, { status: 403 });
         const body = await request.json();
-        const { username, password, display_name, role } = body;
-
-        if (!username || username.length < 3) {
-            return NextResponse.json({ error: 'Username must be at least 3 characters' }, { status: 400 });
-        }
-        if (!password || password.length < 6) {
-            return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
-        }
-        if (!['admin', 'staff'].includes(role)) {
-            return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
-        }
-
+        const username = text(body?.username, 'username', 3, 64);
+        const secret = password(body?.password);
+        const display_name = text(body?.display_name || username, 'display name', 1, 100);
+        const role = body?.role;
+        if (!['admin','staff'].includes(role)) throw new InputError('Invalid role');
         const sql = await getDb();
-        const existingResult = await sql`SELECT id FROM users WHERE username = ${username}`;
-        if (existingResult.length > 0) {
-            return NextResponse.json({ error: 'Username already exists' }, { status: 409 });
-        }
-
-        const passwordHash = await hashPassword(password);
-        await sql`INSERT INTO users (username, password_hash, display_name, role) 
-                  VALUES (${username}, ${passwordHash}, ${display_name || username}, ${role})`;
-
-        return NextResponse.json({ success: true }, { status: 201 });
-    } catch (error) {
-        console.error('Users POST error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
+        const hash = await hashPassword(secret);
+        const [user] = await sql`INSERT INTO users (username,password_hash,display_name,role) VALUES (${username},${hash},${display_name},${role}) RETURNING id`;
+        return Response.json({ success: true, id: user.id }, { status: 201 });
+    } catch (error) { return apiError(error); }
 }

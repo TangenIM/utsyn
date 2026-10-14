@@ -1,22 +1,25 @@
 import postgres from 'postgres';
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/utsyn';
+const DATABASE_URL = process.env.DATABASE_URL;
 
-const sslConfig = process.env.NODE_ENV === 'production'
-  ? {
-    ca: process.env.DB_CA_CERT || process.env.NODE_EXTRA_CA_CERTS,
-    rejectUnauthorized: process.env.DB_REJECT_UNAUTHORIZED === 'true'
-  }
-  : false;
+const sslConfig = process.env.DATABASE_SSL === 'require'
+  ? { ca: process.env.DB_CA_CERT, rejectUnauthorized: true }
+  : undefined;
 
-const sql = postgres(DATABASE_URL, {
-  ssl: sslConfig
-});
+const sql = postgres(DATABASE_URL || '', { ssl: sslConfig, max: 5, idle_timeout: 20, connect_timeout: 10 });
 
 /**
  * Initializes the database tables and default data if they don't exist.
  */
 export async function initializeDatabase() {
+  if (!DATABASE_URL) throw new Error('DATABASE_URL is required');
+  await sql.begin(async tx => {
+    await tx`SELECT pg_advisory_xact_lock(728193)`;
+    await initializeSchema(tx);
+  });
+}
+
+async function initializeSchema(sql: postgres.TransactionSql) {
   try {
     // 1. Create Tables (PostgreSQL Syntax)
     await sql`CREATE TABLE IF NOT EXISTS users (
@@ -44,11 +47,7 @@ export async function initializeDatabase() {
       UNIQUE(day_of_week)
     )`;
 
-    try {
-      await sql`ALTER TABLE open_days ADD COLUMN IF NOT EXISTS time_slots TEXT DEFAULT ''`;
-    } catch (e) {
-      console.warn('time_slots column already exists or err:', e);
-    }
+    await sql`ALTER TABLE open_days ADD COLUMN IF NOT EXISTS time_slots TEXT DEFAULT ''`;
 
     await sql`CREATE TABLE IF NOT EXISTS special_closures (
       id SERIAL PRIMARY KEY,
@@ -60,12 +59,8 @@ export async function initializeDatabase() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`;
 
-    try {
-      await sql`ALTER TABLE special_closures ADD COLUMN IF NOT EXISTS is_closed BOOLEAN NOT NULL DEFAULT TRUE`;
-      await sql`ALTER TABLE special_closures ADD COLUMN IF NOT EXISTS time_slots TEXT DEFAULT ''`;
-    } catch (e) {
-      console.warn('columns already exist or err:', e);
-    }
+    await sql`ALTER TABLE special_closures ADD COLUMN IF NOT EXISTS is_closed BOOLEAN NOT NULL DEFAULT TRUE`;
+    await sql`ALTER TABLE special_closures ADD COLUMN IF NOT EXISTS time_slots TEXT DEFAULT ''`;
 
     await sql`CREATE TABLE IF NOT EXISTS reservations (
       id SERIAL PRIMARY KEY,
@@ -88,11 +83,30 @@ export async function initializeDatabase() {
       is_active BOOLEAN NOT NULL DEFAULT TRUE
     )`;
 
+    await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT 'no'`;
+    await sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS request_key TEXT UNIQUE`;
+    await sql`CREATE TABLE IF NOT EXISTS sms_notifications (
+      id SERIAL PRIMARY KEY,
+      reservation_id INTEGER REFERENCES reservations(id) ON DELETE SET NULL,
+      event TEXT NOT NULL,
+      status TEXT NOT NULL,
+      message_sid TEXT,
+      error_code TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_sms_reservation_latest ON sms_notifications (reservation_id, id DESC)`;
+
     await sql`CREATE TABLE IF NOT EXISTS table_assignments (
       id SERIAL PRIMARY KEY,
       reservation_id INTEGER NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
       table_id INTEGER NOT NULL REFERENCES tables_config(id) ON DELETE CASCADE,
       UNIQUE(reservation_id, table_id)
+    )`;
+
+    await sql`CREATE TABLE IF NOT EXISTS floor_layouts (
+      key TEXT PRIMARY KEY,
+      positions JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`;
 
     await sql`CREATE TABLE IF NOT EXISTS menu_categories (
@@ -121,6 +135,12 @@ export async function initializeDatabase() {
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_menu_day_items_date ON menu_day_items(date)`;
 
+    await sql`CREATE TABLE IF NOT EXISTS api_rate_limits (
+      key TEXT PRIMARY KEY,
+      count INTEGER NOT NULL,
+      reset_at TIMESTAMPTZ NOT NULL
+    )`;
+
     // 2. Create Indexes (Postgres syntax same as SQLite mostly)
     await sql`CREATE INDEX IF NOT EXISTS idx_reservations_date ON reservations(date)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status)`;
@@ -147,7 +167,7 @@ export async function initializeDatabase() {
         { key: 'max_capacity', value: '60' },
         { key: 'booking_cutoff_minutes', value: '45' },
         { key: 'time_slot_interval', value: '15' },
-        { key: 'sms_provider', value: 'webhook' },
+        { key: 'sms_provider', value: 'disabled' },
         { key: 'sms_webhook_url', value: '' },
         { key: 'sms_twilio_sid', value: '' },
         { key: 'sms_twilio_token', value: '' },
@@ -203,9 +223,9 @@ let initPromise: Promise<void> | null = null;
 /**
  * Returns the sql client, ensuring tables exist first.
  */
-export async function getDb(): Promise<postgres.Sql<any>> {
+export async function getDb(): Promise<postgres.Sql> {
   if (!initPromise) {
-    initPromise = initializeDatabase();
+    initPromise = initializeDatabase().catch(error => { initPromise = null; throw error; });
   }
   await initPromise;
   return sql;

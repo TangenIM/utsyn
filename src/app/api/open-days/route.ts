@@ -1,70 +1,42 @@
-import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/db';
+import { getAuthUser } from '@/lib/auth';
+import { integer, boolean, text, timeSlots, TIME, InputError, apiError } from '@/lib/validation';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
         const sql = await getDb();
-        const rows = await sql`SELECT * FROM open_days ORDER BY day_of_week`;
-        return NextResponse.json(rows, {
-            headers: { 'Cache-Control': 'no-store, max-age=0' }
-        });
-    } catch (error) {
-        console.error('Open days GET error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
+        const days = await sql`SELECT * FROM open_days ORDER BY day_of_week`;
+        if (request.nextUrl.searchParams.get('calendar') === 'true') {
+            const exceptions = await sql`SELECT date,is_closed,time_slots FROM special_closures WHERE date >= TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD') ORDER BY date`;
+            return Response.json({ days, exceptions }, { headers: { 'Cache-Control': 'no-store' } });
+        }
+        return Response.json(days, { headers: { 'Cache-Control': 'no-store' } });
+    } catch (error) { return apiError(error); }
 }
-
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
     try {
-        const { getAuthUser } = await import('@/lib/auth');
         const user = await getAuthUser();
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-        if (user.role !== 'admin') {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
-
-        const body = (await request.json()) as any[];
-        if (!Array.isArray(body)) {
-            return NextResponse.json({ error: 'Body must be an array' }, { status: 400 });
-        }
-
-        const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
-        for (const day of body) {
-            if (typeof day.day_of_week !== 'number' || day.day_of_week < 0 || day.day_of_week > 6) {
-                return NextResponse.json({ error: 'Invalid day_of_week' }, { status: 400 });
-            }
-            if (!timeRegex.test(day.open_time) || !timeRegex.test(day.close_time)) {
-                return NextResponse.json({ error: 'Invalid time format (HH:MM)' }, { status: 400 });
-            }
-            if (typeof day.is_active !== 'boolean' && day.is_active !== 0 && day.is_active !== 1) {
-                return NextResponse.json({ error: 'Invalid is_active status' }, { status: 400 });
-            }
-            if (day.time_slots !== undefined && typeof day.time_slots !== 'string') {
-                return NextResponse.json({ error: 'Invalid time_slots format' }, { status: 400 });
-            }
-        }
-
+        if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        const body = await request.json();
+        if (!Array.isArray(body) || body.length > 7) throw new InputError('Expected at most seven weekdays');
+        const days = body.map(day => {
+            const day_of_week = integer(day?.day_of_week, 'weekday', 0, 6);
+            const open_time = text(day?.open_time, 'opening time', 5, 5);
+            const close_time = text(day?.close_time, 'closing time', 5, 5);
+            if (!TIME.test(open_time) || !TIME.test(close_time)) throw new InputError('Use HH:MM');
+            const is_active = boolean(day?.is_active, 'active flag');
+            const time_slots = timeSlots(day?.time_slots ?? '');
+            if (is_active && !time_slots && open_time >= close_time) throw new InputError('Closing time must be after opening time');
+            return { day_of_week, open_time, close_time, is_active, time_slots };
+        });
+        if (new Set(days.map(d => d.day_of_week)).size !== days.length) throw new InputError('Duplicate weekdays');
         const sql = await getDb();
-        if (body.length > 0) {
-            await sql.begin(async (t: any) => {
-                for (const day of body) {
-                    const isActive = day.is_active === true || day.is_active === 1;
-                    const timeSlots = day.time_slots !== undefined ? day.time_slots : '';
-                    const result = await t`UPDATE open_days 
-                                           SET open_time = ${day.open_time}, close_time = ${day.close_time}, is_active = ${isActive}, time_slots = ${timeSlots} 
-                                           WHERE day_of_week = ${day.day_of_week}`;
-                    if (result.count === 0) {
-                        throw new Error(`Day ${day.day_of_week} not found in database`);
-                    }
-                }
-            });
-        }
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Open days PUT error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
+        await sql.begin(async tx => {
+            await tx`SELECT pg_advisory_xact_lock(728194)`;
+            for (const day of days) await tx`UPDATE open_days SET open_time = ${day.open_time}, close_time = ${day.close_time}, is_active = ${day.is_active}, time_slots = ${day.time_slots} WHERE day_of_week = ${day.day_of_week}`;
+        });
+        return Response.json({ success: true });
+    } catch (error) { return apiError(error); }
 }

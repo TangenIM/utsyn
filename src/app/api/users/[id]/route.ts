@@ -1,29 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
+import { id as validId, InputError, apiError } from '@/lib/validation';
 
-export async function DELETE(
-    _request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const user = await getAuthUser();
-        if (!user || user.role !== 'admin') {
-            return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-        }
-
-        const { id } = await params;
-
-        // Don't allow deleting yourself
-        if (Number(id) === user.userId) {
-            return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
-        }
-
+        if (user?.role !== 'admin') return Response.json({ error: 'Admin access required' }, { status: 403 });
+        const id = validId((await params).id);
+        if (id === user.userId) throw new InputError('Cannot delete your own account');
         const sql = await getDb();
-        await sql`DELETE FROM users WHERE id = ${id}`;
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('User DELETE error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
+        await sql.begin(async tx => {
+            await tx`SELECT pg_advisory_xact_lock(728195)`;
+            // The actor may have been deleted while waiting for another admin.
+            const [actor] = await tx`SELECT role FROM users WHERE id = ${user.userId}`;
+            if (actor?.role !== 'admin') throw new InputError('Admin access required',403);
+            const result = await tx`DELETE FROM users WHERE id = ${id}`;
+            if (!result.count) throw new InputError('User not found', 404);
+        });
+        return Response.json({ success: true });
+    } catch (error) { return apiError(error); }
 }

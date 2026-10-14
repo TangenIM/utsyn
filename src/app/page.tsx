@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { LocaleProvider, useLocale } from '@/components/LocaleProvider';
@@ -7,6 +8,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import A11yToolbar from '@/components/A11yToolbar';
 import { IconClock, IconClipboard, IconMapPin } from '@/components/Icons';
+import { restaurantDate } from '@/lib/utils';
 
 interface OpenDay {
   day_of_week: number;
@@ -15,11 +17,15 @@ interface OpenDay {
   is_active: number;
 }
 
+interface MenuItem { id: number; name_no: string; name_en: string; desc_no: string; desc_en: string; price: number; is_active: boolean }
+interface MenuCategory { id: number; name_no: string; name_en: string; items: MenuItem[] }
+
 function HomePage() {
   const { locale, t } = useLocale();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [openDays, setOpenDays] = useState<OpenDay[]>([]);
-  const [menuCategories, setMenuCategories] = useState<any[]>([]);
+  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
+  const [menuLoaded, setMenuLoaded] = useState(false);
 
   useEffect(() => {
     fetch('/api/settings', { cache: 'no-store' })
@@ -31,16 +37,16 @@ function HomePage() {
       .then(data => { if (Array.isArray(data)) setOpenDays(data); })
       .catch(console.error);
     // Fetch today's daily menu
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const todayStr = restaurantDate();
     fetch(`/api/menu/daily?date=${todayStr}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         if (data && Array.isArray(data.categories)) {
           setMenuCategories(data.categories);
         }
+        setMenuLoaded(true);
       })
-      .catch(console.error);
+      .catch(() => setMenuLoaded(true));
   }, []);
 
   const dayNames = [
@@ -102,7 +108,7 @@ function HomePage() {
                     <h4 style={{ fontSize: 'var(--font-size-sm)', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 'var(--space-xs)' }}>
                       {locale === 'no' ? category.name_no : category.name_en}
                     </h4>
-                    {Array.isArray(category.items) && category.items.filter((item: any) => item.is_active).map((item: any) => (
+                    {Array.isArray(category.items) && category.items.filter((item) => item.is_active).map((item) => (
                       <div key={item.id} className="price-item" style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-xs)', flexWrap: 'wrap' }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 'var(--font-weight-medium)' }}>
@@ -123,7 +129,7 @@ function HomePage() {
                 ))}
                 {(!Array.isArray(menuCategories) || menuCategories.length === 0) && (
                   <div className="price-item">
-                    <span>{locale === 'no' ? 'Meny laster...' : 'Loading menu...'}</span>
+                    <span>{menuLoaded ? (locale === 'no' ? 'Menyen er ikke publisert ennå.' : 'The menu has not been published yet.') : (locale === 'no' ? 'Meny laster...' : 'Loading menu...')}</span>
                   </div>
                 )}
               </div>
@@ -169,7 +175,7 @@ function HomePage() {
               {/* Row 1 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2xl)', flexWrap: 'wrap' }} className="animate-in slide-in-left">
                 <div style={{ flex: '1 1 400px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
-                  <img src="/kitchen_plating_food.jpg" alt={locale === 'no' ? "Elever på kjøkkenet" : "Students in the kitchen"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
+                  <Image width={800} height={600} sizes="(max-width: 768px) 100vw, 50vw" src="/kitchen_plating_food.jpg" alt={locale === 'no' ? "Elever på kjøkkenet" : "Students in the kitchen"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
                 </div>
                 <div style={{ flex: '1 1 400px' }}>
                   <h3 style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-md)' }}>
@@ -186,7 +192,7 @@ function HomePage() {
               {/* Row 2 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2xl)', flexWrap: 'wrap', flexDirection: 'row-reverse' }} className="animate-in slide-in-right">
                 <div style={{ flex: '1 1 400px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
-                  <img src="/culinary_students_sushi.jpg" alt={locale === 'no' ? "Elever lager sushi" : "Students making sushi"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
+                  <Image width={800} height={600} sizes="(max-width: 768px) 100vw, 50vw" src="/culinary_students_sushi.jpg" alt={locale === 'no' ? "Elever lager sushi" : "Students making sushi"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
                 </div>
                 <div style={{ flex: '1 1 400px' }}>
                   <h3 style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-md)' }}>
@@ -203,7 +209,7 @@ function HomePage() {
               {/* Row 3 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2xl)', flexWrap: 'wrap' }} className="animate-in slide-in-left">
                 <div style={{ flex: '1 1 400px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
-                  <img src="/plating_dessert.jpg" alt={locale === 'no' ? "Student anretter dessert" : "Student plating dessert"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
+                  <Image width={800} height={600} sizes="(max-width: 768px) 100vw, 50vw" src="/plating_dessert.jpg" alt={locale === 'no' ? "Student anretter dessert" : "Student plating dessert"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
                 </div>
                 <div style={{ flex: '1 1 400px' }}>
                   <h3 style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-md)' }}>
@@ -220,7 +226,7 @@ function HomePage() {
               {/* Row 4 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2xl)', flexWrap: 'wrap', flexDirection: 'row-reverse' }} className="animate-in slide-in-right">
                 <div style={{ flex: '1 1 400px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
-                  <img src="/student_setting_table.jpg" alt={locale === 'no' ? "Student dekker bord" : "Student setting table"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
+                  <Image width={800} height={600} sizes="(max-width: 768px) 100vw, 50vw" src="/student_setting_table.jpg" alt={locale === 'no' ? "Student dekker bord" : "Student setting table"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
                 </div>
                 <div style={{ flex: '1 1 400px' }}>
                   <h3 style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-md)' }}>
@@ -228,8 +234,8 @@ function HomePage() {
                   </h3>
                   <p style={{ color: 'var(--color-text-secondary)', lineHeight: 'var(--line-height-relaxed)' }}>
                     {locale === 'no'
-                      ? 'Restaraunt Utsyn er mer enn bare mat; våre servitørelever sørger for at restauranten er vakkert dekket og at alle gjester føler seg hjertelig velkomne.'
-                      : 'Restaraunt Utsyn is more than just food; our waiter students ensure that the restaurant is beautifully set and that all guests feel warmly welcomed.'}
+                      ? 'Restaurant Utsyn er mer enn bare mat; våre servitørelever sørger for at restauranten er vakkert dekket og at alle gjester føler seg hjertelig velkomne.'
+                      : 'Restaurant Utsyn is more than just food; our waiter students ensure that the restaurant is beautifully set and that all guests feel warmly welcomed.'}
                   </p>
                 </div>
               </div>
@@ -237,7 +243,7 @@ function HomePage() {
               {/* Row 5 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2xl)', flexWrap: 'wrap' }} className="animate-in slide-in-left">
                 <div style={{ flex: '1 1 400px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
-                  <img src="/chef_at_pass.jpg" alt={locale === 'no' ? "Kokk ved luken" : "Chef at the pass"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
+                  <Image width={800} height={600} sizes="(max-width: 768px) 100vw, 50vw" src="/chef_at_pass.jpg" alt={locale === 'no' ? "Kokk ved luken" : "Chef at the pass"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
                 </div>
                 <div style={{ flex: '1 1 400px' }}>
                   <h3 style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-md)' }}>
@@ -254,7 +260,7 @@ function HomePage() {
               {/* Row 6 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2xl)', flexWrap: 'wrap', flexDirection: 'row-reverse' }} className="animate-in slide-in-right">
                 <div style={{ flex: '1 1 400px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
-                  <img src="/ready_table.png" alt={locale === 'no' ? "Smørbrødbrett" : "Sandwich platter"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
+                  <Image width={800} height={600} sizes="(max-width: 768px) 100vw, 50vw" src="/ready_table.png" alt={locale === 'no' ? "Smørbrødbrett" : "Sandwich platter"} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', aspectRatio: '4/3' }} />
                 </div>
                 <div style={{ flex: '1 1 400px' }}>
                   <h3 style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-md)' }}>

@@ -1,5 +1,7 @@
 'use client';
 
+import { restaurantDate as getLocalDateStr } from '@/lib/utils';
+
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 
@@ -13,11 +15,7 @@ interface Reservation {
     status: string;
 }
 
-// Helper: get local date as YYYY-MM-DD without UTC conversion
-function getLocalDateStr(date?: Date): string {
-    const d = date || new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+
 
 function formatDatePretty(dateStr: string): string {
     try {
@@ -84,7 +82,6 @@ export default function Dashboard() {
 
     // Find the next date that has reservations (could be today or future)
     const nextDateWithReservations = upcomingDates.length > 0 ? upcomingDates[0] : null;
-    const nextDateReservations = nextDateWithReservations ? upcomingByDate[nextDateWithReservations] : [];
 
     const todayGuests = todayReservations.reduce((sum, r) => sum + r.guests_count, 0);
     

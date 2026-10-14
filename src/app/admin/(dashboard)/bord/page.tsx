@@ -1,7 +1,10 @@
 'use client';
 
+import { restaurantDate as getLocalDateStr } from '@/lib/utils';
+
+import Modal from '@/components/Modal';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { IconCheck, IconX, IconHourglass, IconWrench, IconSave, IconCalendar } from '@/components/Icons';
+import { IconCheck, IconHourglass, IconWrench, IconSave, IconCalendar } from '@/components/Icons';
 import { useUser } from '../layout';
 
 interface Table {
@@ -35,11 +38,7 @@ interface TablePosition {
     rotate?: number;
 }
 
-// Helper: get local date as YYYY-MM-DD without UTC conversion
-function getLocalDateStr(date?: Date): string {
-    const d = date || new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+
 
 // Default table positions matching the actual floor plan
 const defaultTablePositions: Record<number, TablePosition> = {
@@ -64,37 +63,11 @@ const defaultPillarPositions = [
     { x: 9, y: 66 }, { x: 9, y: 84 },
 ];
 
-// Load layout from localStorage
-function loadLayout(dateKey?: string): Record<number, TablePosition> | null {
-    try {
-        // Try date-specific layout first
-        if (dateKey) {
-            const dayLayout = localStorage.getItem(`utsyn_layout_${dateKey}`);
-            if (dayLayout) return JSON.parse(dayLayout);
-        }
-        // Fall back to permanent layout
-        const permLayout = localStorage.getItem('utsyn_layout_permanent');
-        if (permLayout) return JSON.parse(permLayout);
-    } catch { /* ignore */ }
-    return null;
-}
-
-function saveLayout(positions: Record<number, TablePosition>, mode: 'permanent' | 'day', dateKey?: string) {
-    try {
-        if (mode === 'permanent') {
-            localStorage.setItem('utsyn_layout_permanent', JSON.stringify(positions));
-        } else if (dateKey) {
-            localStorage.setItem(`utsyn_layout_${dateKey}`, JSON.stringify(positions));
-        }
-    } catch { /* ignore */ }
-}
-
 export default function BordPage() {
     const user = useUser();
     const isAdmin = user?.role === 'admin';
     const [tables, setTables] = useState<Table[]>([]);
     const [reservations, setReservations] = useState<Reservation[]>([]);
-    const [allReservations, setAllReservations] = useState<Reservation[]>([]);
     const [assignments, setAssignments] = useState<TableAssignment[]>([]);
     const [filterDate, setFilterDate] = useState(getLocalDateStr());
     const [loading, setLoading] = useState(true);
@@ -115,12 +88,12 @@ export default function BordPage() {
 
     // Load layout on mount and when date changes
     useEffect(() => {
-        const saved = loadLayout(filterDate);
-        if (saved) {
-            setTablePositions(saved);
-        } else {
-            setTablePositions({ ...defaultTablePositions });
-        }
+        const controller = new AbortController();
+        fetch('/api/tables/layout?date=' + filterDate, { signal: controller.signal, cache: 'no-store' })
+            .then(async r => { if (!r.ok) throw new Error('Layout unavailable'); return r.json(); })
+            .then(data => setTablePositions({ ...defaultTablePositions, ...data.positions }))
+            .catch(() => { if (!controller.signal.aborted) setToast('Kunne ikke laste planløsning'); });
+        return () => controller.abort();
     }, [filterDate]);
 
     // Fetch all reservations to find dates that have reservations
@@ -129,7 +102,6 @@ export default function BordPage() {
             const res = await fetch('/api/reservations');
             const data = await res.json();
             if (Array.isArray(data)) {
-                setAllReservations(data.filter((r: Reservation) => r.status !== 'cancelled'));
                 const dates = [...new Set(data
                     .filter((r: Reservation) => r.status !== 'cancelled')
                     .map((r: Reservation) => r.date)
@@ -148,6 +120,7 @@ export default function BordPage() {
                 fetch(`/api/reservations?date=${filterDate}`),
                 fetch(`/api/tables/assignments?date=${filterDate}`)
             ]);
+            if (!tablesRes.ok || !resRes.ok || !assignRes.ok) throw new Error('Kunne ikke laste bordkart');
 
             const tablesData = await tablesRes.json();
             if (Array.isArray(tablesData)) {
@@ -172,6 +145,7 @@ export default function BordPage() {
             }
         } catch (err) {
             console.error(err);
+            setToast('Kunne ikke laste bordkart. Last siden på nytt.');
         } finally {
             setLoading(false);
         }
@@ -230,7 +204,8 @@ export default function BordPage() {
 
         try {
             if (isAssigned) {
-                await fetch(`/api/tables/assignments?reservation_id=${selectedReservation.id}&table_id=${tableId}`, { method: 'DELETE' });
+                const res = await fetch(`/api/tables/assignments?reservation_id=${selectedReservation.id}&table_id=${tableId}`, { method: 'DELETE' });
+                if (!res.ok) { showToast((await res.json()).error || 'Kunne ikke fjerne bord'); return; }
             } else {
                 const res = await fetch('/api/tables/assignments', {
                     method: 'POST',
@@ -247,6 +222,7 @@ export default function BordPage() {
             fetchAllReservations();
         } catch (err) {
             console.error(err);
+            showToast('Kunne ikke endre bordtildeling. Prøv igjen.');
         }
     };
 
@@ -262,9 +238,10 @@ export default function BordPage() {
                 setEditingTable(null);
                 fetchData();
                 showToast('Bord oppdatert');
-            }
+            } else showToast((await res.json()).error || 'Kunne ikke oppdatere bord');
         } catch (err) {
             console.error(err);
+            showToast('Kunne ikke oppdatere bord. Prøv igjen.');
         }
     };
 
@@ -272,14 +249,16 @@ export default function BordPage() {
         try {
             const res = await fetch(`/api/reservations/${id}/confirm`, { method: 'POST' });
             if (res.ok) {
-                showToast('Reservasjon bekreftet og SMS sendt!');
+                const data = await res.json();
+                showToast(data.sms?.status === 'failed' ? 'Reservasjon bekreftet. SMS feilet: ' + (data.sms.error_code || '') : data.sms?.status === 'disabled' ? 'Reservasjon bekreftet. SMS er deaktivert.' : 'Reservasjon bekreftet. SMS sendt til leverandøren.');
                 fetchData();
                 fetchAllReservations();
             } else {
-                showToast('Kunne ikke bekrefte reservasjonen.');
+                showToast((await res.json()).error || 'Kunne ikke bekrefte reservasjonen.');
             }
         } catch (err) {
             console.error(err);
+            showToast('Kontroller reservasjonen og SMS-loggen før du prøver igjen.');
         }
     };
 
@@ -325,21 +304,26 @@ export default function BordPage() {
         }
     }, [editMode, handleMouseMove, handleMouseUp]);
 
-    const handleSaveLayout = (mode: 'permanent' | 'day') => {
-        saveLayout(tablePositions, mode, mode === 'day' ? filterDate : undefined);
-        setSaveDialogOpen(false);
-        setEditMode(false);
-        showToast(mode === 'permanent' ? 'Planløsning lagret permanent!' : `Planløsning lagret for ${formatDatePretty(filterDate)}`);
+    const handleSaveLayout = async (mode: 'permanent' | 'day') => {
+        try {
+            const res = await fetch('/api/tables/layout', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: mode === 'permanent' ? 'permanent' : filterDate, positions: tablePositions }) });
+            if (!res.ok) { showToast((await res.json()).error || 'Kunne ikke lagre planløsning'); return; }
+            setSaveDialogOpen(false);
+            setEditMode(false);
+            showToast('Planløsning lagret i databasen');
+        } catch { showToast('Kunne ikke lagre planløsning'); }
     };
 
-    const handleResetLayout = () => {
-        setTablePositions({ ...defaultTablePositions });
-        // Remove any saved layouts
+    const handleResetLayout = async () => {
         try {
-            localStorage.removeItem('utsyn_layout_permanent');
-            localStorage.removeItem(`utsyn_layout_${filterDate}`);
-        } catch { /* ignore */ }
-        showToast('Planløsning tilbakestilt til standard');
+            const res = await fetch('/api/tables/layout?date=' + filterDate, { method: 'DELETE' });
+            if (!res.ok) { showToast('Kunne ikke tilbakestille planløsning'); return; }
+            const saved = await fetch('/api/tables/layout?date=' + filterDate, {cache:'no-store'});
+            if (!saved.ok) { showToast('Tilbakestilt, men kunne ikke laste standardplanen. Last siden på nytt.'); return; }
+            setTablePositions({ ...defaultTablePositions, ...(await saved.json()).positions });
+            showToast('Dagens planløsning tilbakestilt til standard');
+        } catch { showToast('Kunne ikke tilbakestille planløsning'); }
     };
 
     const handleRotateTable = (tableId: number) => {
@@ -588,6 +572,7 @@ export default function BordPage() {
                             return (
                                 <button
                                     key={table.id}
+                                    aria-label={`Bord ${table.name}, ${table.capacity} plasser${!table.is_active ? ', inaktivt' : ''}`}
                                     className={`table-node node-${status} ${editMode ? 'edit-mode' : ''} ${dragging?.id === table.id ? 'dragging' : ''}`}
                                     style={{
                                         left: `${pos.x}%`,
@@ -624,12 +609,12 @@ export default function BordPage() {
 
             {/* Modal for editing table capacity */}
             {editingTable && (
-                <div className="modal-overlay">
+                <Modal title="Bordkart" onClose={() => setEditingTable(null)}>
                     <div className="modal-content">
                         <h3>Rediger Bord {editingTable.name}</h3>
                         <div className="form-group" style={{ marginTop: 'var(--space-md)' }}>
-                            <label className="form-label">Antall plasser</label>
-                            <input
+                            <label htmlFor="bord-field-1" className="form-label">Antall plasser</label>
+                            <input id="bord-field-1"
                                 type="number"
                                 className="form-input"
                                 value={editCapacity}
@@ -652,12 +637,12 @@ export default function BordPage() {
                             <button className="btn btn-primary" onClick={updateTableCapacity}>Lagre</button>
                         </div>
                     </div>
-                </div>
+                </Modal>
             )}
 
             {/* Save layout dialog */}
             {saveDialogOpen && (
-                <div className="modal-overlay">
+                <Modal title="Bordkart" onClose={() => setSaveDialogOpen(false)}>
                     <div className="modal-content">
                         <h3>Lagre planløsning</h3>
                         <p style={{ color: 'var(--color-text-secondary)', marginTop: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
@@ -697,7 +682,7 @@ export default function BordPage() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </Modal>
             )}
 
             <div className={`toast ${toast ? 'show' : ''}`} role="status" aria-live="polite">
@@ -1061,16 +1046,6 @@ export default function BordPage() {
                 
                 .table-node:hover .table-tooltip {
                     display: block;
-                }
-                
-                .modal-overlay {
-                    position: fixed;
-                    inset: 0;
-                    background: rgba(0,0,0,0.5);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 1000;
                 }
                 
                 .modal-content {

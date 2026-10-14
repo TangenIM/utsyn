@@ -39,16 +39,18 @@ export default function InnstillingerPage() {
   const fetchAll = useCallback(async () => {
     try {
       const [settingsRes, daysRes, closuresRes] = await Promise.all([
-        fetch('/api/settings'),
+        fetch('/api/settings?scope=admin'),
         fetch('/api/open-days'),
         fetch('/api/closures'),
       ]);
+      if (!settingsRes.ok || !daysRes.ok || !closuresRes.ok) throw new Error('Kunne ikke laste innstillinger');
       setSettings(await settingsRes.json());
       setOpenDays(await daysRes.json());
       const closuresData = await closuresRes.json();
       if (Array.isArray(closuresData)) setClosures(closuresData);
     } catch (err) {
       console.error('Error loading settings:', err);
+      setToast('Kunne ikke laste innstillinger. Last siden på nytt før du gjør endringer.');
     } finally {
       setLoading(false);
     }
@@ -102,6 +104,7 @@ export default function InnstillingerPage() {
       }
     } catch (err) {
       console.error('Error saving settings:', err);
+      showToast('Kunne ikke lagre innstillinger. Prøv igjen.');
     }
   };
 
@@ -113,8 +116,10 @@ export default function InnstillingerPage() {
         body: JSON.stringify(openDays),
       });
       if (res.ok) showToast('Åpningstider lagret!');
+      else showToast((await res.json()).error || 'Kunne ikke lagre åpningstider');
     } catch (err) {
       console.error('Error saving open days:', err);
+      showToast('Kunne ikke lagre åpningstider. Prøv igjen.');
     }
   };
 
@@ -140,7 +145,7 @@ export default function InnstillingerPage() {
         setNewClosureIsClosed(true);
         fetchAll();
         showToast('Spesialdag lagt til!');
-      }
+      } else showToast((await res.json()).error || 'Kunne ikke legge til avvik');
     } catch (err) {
       console.error('Error adding closure:', err);
     }
@@ -186,29 +191,29 @@ export default function InnstillingerPage() {
         </p>
         <div className="admin-form-grid">
           <div className="form-group">
-            <label className="form-label">Tittel (Norsk)</label>
-            <input className="form-input" value={settings.hero_title_no || ''} onChange={e => updateSetting('hero_title_no', e.target.value)} />
+            <label htmlFor="innstillinger-field-1" className="form-label">Tittel (Norsk)</label>
+            <input id="innstillinger-field-1" className="form-input" value={settings.hero_title_no || ''} onChange={e => updateSetting('hero_title_no', e.target.value)} />
           </div>
           <div className="form-group">
-            <label className="form-label">Tittel (Engelsk)</label>
-            <input className="form-input" value={settings.hero_title_en || ''} onChange={e => updateSetting('hero_title_en', e.target.value)} />
+            <label htmlFor="innstillinger-field-2" className="form-label">Tittel (Engelsk)</label>
+            <input id="innstillinger-field-2" className="form-input" value={settings.hero_title_en || ''} onChange={e => updateSetting('hero_title_en', e.target.value)} />
           </div>
           <div className="form-group">
-            <label className="form-label">Undertittel (Norsk)</label>
-            <input className="form-input" value={settings.hero_subtitle_no || ''} onChange={e => updateSetting('hero_subtitle_no', e.target.value)} />
+            <label htmlFor="innstillinger-field-3" className="form-label">Undertittel (Norsk)</label>
+            <input id="innstillinger-field-3" className="form-input" value={settings.hero_subtitle_no || ''} onChange={e => updateSetting('hero_subtitle_no', e.target.value)} />
           </div>
           <div className="form-group">
-            <label className="form-label">Undertittel (Engelsk)</label>
-            <input className="form-input" value={settings.hero_subtitle_en || ''} onChange={e => updateSetting('hero_subtitle_en', e.target.value)} />
+            <label htmlFor="innstillinger-field-4" className="form-label">Undertittel (Engelsk)</label>
+            <input id="innstillinger-field-4" className="form-input" value={settings.hero_subtitle_en || ''} onChange={e => updateSetting('hero_subtitle_en', e.target.value)} />
           </div>
         </div>
         <div className="form-group">
-          <label className="form-label">Om oss (Norsk)</label>
-          <textarea className="form-textarea" value={settings.about_text_no || ''} onChange={e => updateSetting('about_text_no', e.target.value)} rows={4} />
+          <label htmlFor="innstillinger-field-5" className="form-label">Om oss (Norsk)</label>
+          <textarea id="innstillinger-field-5" className="form-textarea" value={settings.about_text_no || ''} onChange={e => updateSetting('about_text_no', e.target.value)} rows={4} />
         </div>
         <div className="form-group">
-          <label className="form-label">Om oss (Engelsk)</label>
-          <textarea className="form-textarea" value={settings.about_text_en || ''} onChange={e => updateSetting('about_text_en', e.target.value)} rows={4} />
+          <label htmlFor="innstillinger-field-6" className="form-label">Om oss (Engelsk)</label>
+          <textarea id="innstillinger-field-6" className="form-textarea" value={settings.about_text_en || ''} onChange={e => updateSetting('about_text_en', e.target.value)} rows={4} />
         </div>
         <button className="btn btn-primary" onClick={saveSettings}>Lagre innhold</button>
       </div>
@@ -218,30 +223,32 @@ export default function InnstillingerPage() {
         <h3>Kontakt og Kapasitet</h3>
         <div className="admin-form-grid">
           <div className="form-group">
-            <label className="form-label">Adresse</label>
-            <input className="form-input" value={settings.address || ''} onChange={e => updateSetting('address', e.target.value)} />
+            <label htmlFor="innstillinger-field-7" className="form-label">Adresse</label>
+            <input id="innstillinger-field-7" className="form-input" value={settings.address || ''} onChange={e => updateSetting('address', e.target.value)} />
           </div>
           <div className="form-group">
-            <label className="form-label">Telefon</label>
-            <input className="form-input" value={settings.phone || ''} onChange={e => updateSetting('phone', e.target.value)} />
+            <label htmlFor="innstillinger-field-8" className="form-label">Telefon</label>
+            <input id="innstillinger-field-8" className="form-input" value={settings.phone || ''} onChange={e => updateSetting('phone', e.target.value)} />
           </div>
           <div className="form-group">
-            <label className="form-label">E-post</label>
-            <input className="form-input" value={settings.email || ''} onChange={e => updateSetting('email', e.target.value)} />
+            <label htmlFor="innstillinger-field-9" className="form-label">E-post</label>
+            <input id="innstillinger-field-9" className="form-input" value={settings.email || ''} onChange={e => updateSetting('email', e.target.value)} />
           </div>
           <div className="form-group">
-            <label className="form-label">Maks kapasitet (personer)</label>
-            <input className="form-input" type="number" value={settings.max_capacity || ''} onChange={e => updateSetting('max_capacity', e.target.value)} />
+            <label htmlFor="innstillinger-field-10" className="form-label">Maks kapasitet (personer)</label>
+            <input id="innstillinger-field-10" className="form-input" type="number" value={settings.max_capacity || ''} onChange={e => updateSetting('max_capacity', e.target.value)} />
             <div className="form-hint">Maks antall gjester som kan reservere på ett tidspunkt. Når grensen nås, vises tidspunktet som fullt.</div>
           </div>
           <div className="form-group">
-            <label className="form-label">Booking stoppes X min før stenging</label>
-            <input className="form-input" type="number" value={settings.booking_cutoff_minutes || ''} onChange={e => updateSetting('booking_cutoff_minutes', e.target.value)} />
+            <label htmlFor="innstillinger-field-11" className="form-label">Booking stoppes X min før stenging</label>
+            <input id="innstillinger-field-11" className="form-input" type="number" value={settings.booking_cutoff_minutes || ''} onChange={e => updateSetting('booking_cutoff_minutes', e.target.value)} />
             <div className="form-hint">Hindrer gjester fra å reservere for tett opp mot stengetid. F.eks. 60 = siste reservasjon 1 time før stenging.</div>
           </div>
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
              <label className="form-label">SMS Leverandør</label>
+             {settings.sms_environment_configured === 'true' && <p className="form-hint">Serverens miljøvariabler styrer SMS. Aktiv leverandør: {settings.sms_effective_provider}. Endringer nedenfor gjelder bare når miljøvariablene fjernes.</p>}
              <select className="form-input" value={settings.sms_provider || 'webhook'} onChange={e => updateSetting('sms_provider', e.target.value)}>
+                <option value="disabled">Deaktivert</option>
                 <option value="webhook">Webhook (Make.com, Zapier, etc.)</option>
                 <option value="twilio">Twilio</option>
              </select>
@@ -249,22 +256,22 @@ export default function InnstillingerPage() {
           {settings.sms_provider === 'twilio' ? (
              <>
                <div className="form-group">
-                 <label className="form-label">Twilio Account SID</label>
-                 <input className="form-input" value={settings.sms_twilio_sid || ''} onChange={e => updateSetting('sms_twilio_sid', e.target.value)} placeholder="AC..." />
+                 <label htmlFor="innstillinger-field-12" className="form-label">Twilio Account SID</label>
+                 <input id="innstillinger-field-12" className="form-input" value={settings.sms_twilio_sid || ''} onChange={e => updateSetting('sms_twilio_sid', e.target.value)} placeholder="AC..." />
                </div>
                <div className="form-group">
-                 <label className="form-label">Twilio Auth Token</label>
-                 <input className="form-input" type="password" value={settings.sms_twilio_token || ''} onChange={e => updateSetting('sms_twilio_token', e.target.value)} placeholder="Skjult..." />
+                 <label htmlFor="innstillinger-field-13" className="form-label">Twilio Auth Token</label>
+                 <input id="innstillinger-field-13" className="form-input" type="password" autoComplete="new-password" value={settings.sms_twilio_token || ''} onChange={e => updateSetting('sms_twilio_token', e.target.value)} placeholder={settings.sms_twilio_token_configured === 'true' ? 'Lagret. La stå tomt for å beholde.' : 'Auth Token'} />
                </div>
                <div className="form-group">
-                 <label className="form-label">Twilio Sender Number</label>
-                 <input className="form-input" value={settings.sms_twilio_from || ''} onChange={e => updateSetting('sms_twilio_from', e.target.value)} placeholder="+123456789" />
+                 <label htmlFor="innstillinger-field-14" className="form-label">Twilio Sender Number</label>
+                 <input id="innstillinger-field-14" className="form-input" value={settings.sms_twilio_from || ''} onChange={e => updateSetting('sms_twilio_from', e.target.value)} placeholder="+123456789" />
                </div>
              </>
           ) : (
              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-               <label className="form-label">SMS Webhook URL (valgfritt)</label>
-               <input className="form-input" value={settings.sms_webhook_url || ''} onChange={e => updateSetting('sms_webhook_url', e.target.value)} placeholder="https://..." />
+               <label htmlFor="innstillinger-field-15" className="form-label">SMS Webhook URL (valgfritt)</label>
+               <input id="innstillinger-field-15" className="form-input" value={settings.sms_webhook_url || ''} onChange={e => updateSetting('sms_webhook_url', e.target.value)} placeholder="https://..." />
              </div>
           )}
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
@@ -365,16 +372,16 @@ export default function InnstillingerPage() {
         </p>
         <div className="admin-form-grid" style={{ marginBottom: 'var(--space-lg)' }}>
           <div className="form-group">
-            <label className="form-label">Dato</label>
-            <input type="date" className="form-input" value={newClosureDate} onChange={e => setNewClosureDate(e.target.value)} />
+            <label htmlFor="innstillinger-field-16" className="form-label">Dato</label>
+            <input id="innstillinger-field-16" type="date" className="form-input" value={newClosureDate} onChange={e => setNewClosureDate(e.target.value)} />
           </div>
           <div className="form-group">
-            <label className="form-label">Grunn (Norsk, f.eks. Spesial Event)</label>
-            <input className="form-input" value={newClosureReasonNo} onChange={e => setNewClosureReasonNo(e.target.value)} placeholder="F.eks. Juleferie" />
+            <label htmlFor="innstillinger-field-17" className="form-label">Grunn (Norsk, f.eks. Spesial Event)</label>
+            <input id="innstillinger-field-17" className="form-input" value={newClosureReasonNo} onChange={e => setNewClosureReasonNo(e.target.value)} placeholder="F.eks. Juleferie" />
           </div>
           <div className="form-group">
-            <label className="form-label">Grunn (Engelsk)</label>
-            <input className="form-input" value={newClosureReasonEn} onChange={e => setNewClosureReasonEn(e.target.value)} placeholder="E.g. Christmas holiday" />
+            <label htmlFor="innstillinger-field-18" className="form-label">Grunn (Engelsk)</label>
+            <input id="innstillinger-field-18" className="form-input" value={newClosureReasonEn} onChange={e => setNewClosureReasonEn(e.target.value)} placeholder="E.g. Christmas holiday" />
           </div>
         </div>
         <div className="admin-form-grid" style={{ marginBottom: 'var(--space-lg)' }}>
@@ -394,8 +401,8 @@ export default function InnstillingerPage() {
           </div>
           {!newClosureIsClosed && (
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">Spesifikke tidspunkt (f.eks: 17:00, 18:00)</label>
-              <input className="form-input" value={newClosureTimeSlots} onChange={e => setNewClosureTimeSlots(e.target.value)} placeholder="17:00, 18:00, 19:30" />
+              <label htmlFor="innstillinger-field-19" className="form-label">Spesifikke tidspunkt (f.eks: 17:00, 18:00)</label>
+              <input id="innstillinger-field-19" className="form-input" value={newClosureTimeSlots} onChange={e => setNewClosureTimeSlots(e.target.value)} placeholder="17:00, 18:00, 19:30" />
             </div>
           )}
         </div>

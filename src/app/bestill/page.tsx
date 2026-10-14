@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { LocaleProvider, useLocale } from '@/components/LocaleProvider';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import A11yToolbar from '@/components/A11yToolbar';
-import { IconCheck, IconArrowLeft } from '@/components/Icons';
+import { IconCheck } from '@/components/Icons';
+import { validatePhone, restaurantDate } from '@/lib/utils';
 
 interface OpenDay {
     day_of_week: number;
@@ -38,13 +39,18 @@ function BookingWizard() {
     const [email, setEmail] = useState('');
     const [comment, setComment] = useState('');
     const [confirmationCode, setConfirmationCode] = useState('');
+    const [smsStatus, setSmsStatus] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const requestKey = useRef<{ payload: string; key: string } | null>(null);
 
     // Calendar state
-    const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-    const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+    const todayStr = restaurantDate();
+    const todayYear = Number(todayStr.slice(0,4)), todayMonth = Number(todayStr.slice(5,7)) - 1;
+    const [currentMonth, setCurrentMonth] = useState(todayMonth);
+    const [currentYear, setCurrentYear] = useState(todayYear);
     const [openDays, setOpenDays] = useState<OpenDay[]>([]);
+    const [exceptions, setExceptions] = useState<{ date: string; is_closed: boolean }[]>([]);
     const [availability, setAvailability] = useState<AvailabilityResponse | null>(null);
     const [loadingSlots, setLoadingSlots] = useState(false);
 
@@ -54,29 +60,26 @@ function BookingWizard() {
     const [emailError, setEmailError] = useState('');
 
     useEffect(() => {
-        fetch('/api/open-days', { cache: 'no-store' }).then(r => r.json()).then(setOpenDays).catch(console.error);
-    }, []);
-
-    const fetchAvailability = useCallback(async (date: string) => {
-        setLoadingSlots(true);
-        try {
-            const res = await fetch(`/api/availability?date=${date}`);
-            const data = await res.json();
-            setAvailability(data);
-        } catch (err) {
-            console.error('Error fetching availability:', err);
-        } finally {
-            setLoadingSlots(false);
-        }
-    }, []);
+        fetch('/api/open-days?calendar=true', { cache: 'no-store' }).then(async r => {
+            if (!r.ok) throw new Error('Schedule unavailable');
+            return r.json();
+        }).then(data => { setOpenDays(data.days); setExceptions(data.exceptions); }).catch(() => setError(t('error_booking_failed')));
+    }, [t]);
 
     useEffect(() => {
-        if (selectedDate) {
-            fetchAvailability(selectedDate);
-        }
-    }, [selectedDate, fetchAvailability]);
+        if (!selectedDate) return;
+        const controller = new AbortController();
+        setLoadingSlots(true);
+        setAvailability(null);
+        setError('');
+        fetch(`/api/availability?date=${selectedDate}`, { signal: controller.signal, cache: 'no-store' })
+            .then(async res => { if (!res.ok) throw new Error('Availability unavailable'); return res.json(); })
+            .then(setAvailability)
+            .catch(() => { if (!controller.signal.aborted) setError(t('error_booking_failed')); })
+            .finally(() => { if (!controller.signal.aborted) setLoadingSlots(false); });
+        return () => controller.abort();
+    }, [selectedDate, t]);
 
-    const totalSteps = 5;
     const stepLabels = [
         t('book_step_guests'),
         t('book_step_date'),
@@ -85,7 +88,7 @@ function BookingWizard() {
         t('book_step_confirm'),
     ];
 
-    const actualGuests = showCustom ? parseInt(customGuests) || 0 : guests;
+    const actualGuests = showCustom ? Number(customGuests) || 0 : guests;
 
     // Calendar helpers
     const getDaysInMonth = (month: number, year: number) => new Date(year, month + 1, 0).getDate();
@@ -102,9 +105,7 @@ function BookingWizard() {
     const isWeekend = (dayOfWeek: number) => dayOfWeek === 0 || dayOfWeek === 6;
 
     const isPastDate = (date: string) => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return new Date(date + 'T00:00:00') < today;
+        return date < todayStr;
     };
 
     const monthNames = [
@@ -137,7 +138,7 @@ function BookingWizard() {
         if (!phone.trim()) {
             setPhoneError(t('error_phone_required'));
             valid = false;
-        } else if (!/^[\d\s\-\+\(\)]{8,}$/.test(phone)) {
+        } else if (!validatePhone(phone)) {
             setPhoneError(t('error_phone_invalid'));
             valid = false;
         }
@@ -152,22 +153,17 @@ function BookingWizard() {
         setLoading(true);
         setError('');
         try {
+            const payload = JSON.stringify({ guest_name: name, phone, email, guests_count: actualGuests, date: selectedDate, time_slot: selectedTime, comment, locale });
+            if (requestKey.current?.payload !== payload) requestKey.current = { payload, key: crypto.randomUUID() };
             const res = await fetch('/api/reservations', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    guest_name: name,
-                    phone,
-                    email,
-                    guests_count: actualGuests,
-                    date: selectedDate,
-                    time_slot: selectedTime,
-                    comment,
-                }),
+                headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestKey.current.key },
+                body: payload,
             });
             const data = await res.json();
             if (res.ok) {
                 setConfirmationCode(data.confirmation_code);
+                setSmsStatus(data.sms?.status || 'disabled');
                 setStep(6); // confirmation step
             } else {
                 setError(data.error || t('error_booking_failed'));
@@ -207,11 +203,10 @@ function BookingWizard() {
             const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const dateObj = new Date(dateStr + 'T00:00:00');
             const dow = dateObj.getDay();
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const isToday = dateObj.getTime() === today.getTime();
+            const isToday = dateStr === todayStr;
             const past = isPastDate(dateStr);
-            const open = isOpenDay(dow);
+            const exception = exceptions.find(e => e.date === dateStr);
+            const open = exception ? !exception.is_closed : isOpenDay(dow);
             const isWe = isWeekend(dow);
             const isSelected = dateStr === selectedDate;
             const disabled = past || !open;
@@ -234,7 +229,7 @@ function BookingWizard() {
                         }
                     }}
                     disabled={disabled}
-                    aria-label={`${d} ${monthNames[currentMonth]} ${currentYear}${isToday ? ' (i dag)' : ''}${disabled ? ' - stengt' : ''}`}
+                    aria-label={`${d} ${monthNames[currentMonth]} ${currentYear}${isToday ? (locale === 'no' ? ' (i dag)' : ' (today)') : ''}${disabled ? (locale === 'no' ? ' - stengt' : ' - closed') : ''}`}
                     aria-pressed={isSelected}
                 >
                     {d}
@@ -252,8 +247,7 @@ function BookingWizard() {
     };
 
     const canGoPrevMonth = () => {
-        const now = new Date();
-        return new Date(currentYear, currentMonth) >= new Date(now.getFullYear(), now.getMonth());
+        return currentYear * 12 + currentMonth > todayYear * 12 + todayMonth;
     };
 
     return (
@@ -268,8 +262,11 @@ function BookingWizard() {
                             <h2>{t('confirm_title')}</h2>
                             <h3>{t('confirm_subtitle')}</h3>
                             <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-xl)' }}>
-                                {t('confirm_message')}
+                                {locale === 'no' ? 'Bestillingen er mottatt. Ta vare på koden nedenfor. Bordet bekreftes av restauranten.' : 'Your booking has been received. Keep the code below. The restaurant will confirm your table.'}
                             </p>
+                            <p role="status">{smsStatus === 'queued' || smsStatus === 'sent'
+                                ? (locale === 'no' ? 'SMS-varslingen er sendt til leverandøren.' : 'The SMS notification has been sent to the provider.')
+                                : (locale === 'no' ? 'SMS er ikke sendt. Bestillingen er likevel lagret. Ta vare på bestillingskoden.' : 'No SMS was sent. Your booking is saved. Keep your booking code.')}</p>
                             <div className="confirmation-code">
                                 <span className="confirmation-code-label">{t('confirm_code')}</span>
                                 <span className="confirmation-code-value">{confirmationCode}</span>
@@ -343,10 +340,10 @@ function BookingWizard() {
                                             <button
                                                 className="btn btn-primary"
                                                 onClick={() => {
-                                                    const n = parseInt(customGuests);
-                                                    if (n >= 1 && n <= 60) setStep(2);
+                                                    const n = Number(customGuests);
+                                                    if (Number.isInteger(n) && n >= 1 && n <= 60) setStep(2);
                                                 }}
-                                                disabled={!customGuests || parseInt(customGuests) < 1 || parseInt(customGuests) > 60}
+                                                disabled={!Number.isInteger(Number(customGuests)) || Number(customGuests) < 1 || Number(customGuests) > 60}
                                                 style={{ marginTop: '24px' }}
                                             >
                                                 {t('book_next')}
@@ -477,8 +474,10 @@ function BookingWizard() {
                                             autoComplete="name"
                                             aria-required="true"
                                             aria-invalid={!!nameError}
+                                            aria-describedby={nameError ? 'booking-name-error' : undefined}
+                                            maxLength={100}
                                         />
-                                        {nameError && <span className="form-error" role="alert">{nameError}</span>}
+                                        {nameError && <span id="booking-name-error" className="form-error" role="alert">{nameError}</span>}
                                     </div>
                                     <div className="form-group">
                                         <label htmlFor="booking-phone" className="form-label">{t('book_phone')} *</label>
@@ -493,8 +492,10 @@ function BookingWizard() {
                                             autoComplete="tel"
                                             aria-required="true"
                                             aria-invalid={!!phoneError}
+                                            aria-describedby={phoneError ? 'booking-phone-error' : undefined}
+                                            maxLength={40}
                                         />
-                                        {phoneError && <span className="form-error" role="alert">{phoneError}</span>}
+                                        {phoneError && <span id="booking-phone-error" className="form-error" role="alert">{phoneError}</span>}
                                     </div>
                                     <div className="form-group">
                                         <label htmlFor="booking-email" className="form-label">{t('book_email')}</label>
@@ -507,8 +508,10 @@ function BookingWizard() {
                                             placeholder={t('book_email_placeholder')}
                                             autoComplete="email"
                                             aria-invalid={!!emailError}
+                                            aria-describedby={emailError ? 'booking-email-error' : undefined}
+                                            maxLength={254}
                                         />
-                                        {emailError && <span className="form-error" role="alert">{emailError}</span>}
+                                        {emailError && <span id="booking-email-error" className="form-error" role="alert">{emailError}</span>}
                                     </div>
                                     <div className="form-group">
                                         <label htmlFor="booking-comment" className="form-label">{t('book_comment')}</label>
@@ -519,6 +522,7 @@ function BookingWizard() {
                                             onChange={(e) => setComment(e.target.value)}
                                             placeholder={t('book_comment_placeholder')}
                                             rows={3}
+                                            maxLength={500}
                                         />
                                     </div>
                                     <div className="wizard-actions">

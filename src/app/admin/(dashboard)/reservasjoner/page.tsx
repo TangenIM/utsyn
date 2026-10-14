@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { IconClipboard, IconCheck, IconX, IconQuestionMark, IconRefresh } from '@/components/Icons';
+import { IconClipboard, IconCheck, IconX } from '@/components/Icons';
+import SmsLog from '@/components/SmsLog';
+import Modal from '@/components/Modal';
 
 interface Reservation {
   id: number;
@@ -15,6 +17,8 @@ interface Reservation {
   status: string;
   confirmation_code: string;
   created_at: string;
+  sms_status?: string;
+  sms_error_code?: string;
 }
 
 export default function ReservasjonerPage() {
@@ -59,11 +63,16 @@ export default function ReservasjonerPage() {
         body: JSON.stringify({ status }),
       });
       if (res.ok) {
-        showToast('Status oppdatert!');
+        const data = await res.json();
+        showToast(data.sms?.status === 'failed' ? 'Status lagret. SMS feilet: ' + (data.sms.error_code || '') : 'Status oppdatert!');
         fetchReservations();
+      } else {
+        const data = await res.json().catch(() => null);
+        showToast(data?.error || 'Kunne ikke oppdatere status.');
       }
     } catch (err) {
       console.error('Error updating status:', err);
+      showToast('Kontroller reservasjonen og SMS-loggen før du prøver igjen.');
     }
   };
 
@@ -175,7 +184,7 @@ export default function ReservasjonerPage() {
         <span style={{ fontWeight: 600, color: 'var(--color-text)', marginRight: 'var(--space-xs)' }}>Statusforklaring:</span>
         <span><span className="status-badge status-needs_seat" style={{ marginRight: '4px' }}>Venter på bord</span> Ny reservasjon, trenger bordtildeling</span>
         <span>→</span>
-        <span><span className="status-badge status-confirmed" style={{ marginRight: '4px' }}>Bekreftet</span> Bord tildelt, SMS sendt til gjest</span>
+        <span><span className="status-badge status-confirmed" style={{ marginRight: '4px' }}>Bekreftet</span> Bord tildelt. Se SMS-status for varslingen</span>
         <span>→</span>
         <span><span className="status-badge status-completed" style={{ marginRight: '4px' }}>Fullført</span> Gjesten har vært og gått</span>
       </div>
@@ -214,6 +223,7 @@ export default function ReservasjonerPage() {
                   <td>
                     <span className={`status-badge status-${r.status}`}>
                       {statusLabel(r.status)}
+                      {r.sms_status && <small style={{ display: 'block' }}>SMS: {r.sms_status}{r.sms_error_code ? ' (' + r.sms_error_code + ')' : ''}</small>}
                     </span>
                   </td>
                   <td>
@@ -235,7 +245,7 @@ export default function ReservasjonerPage() {
                           </>
                         )}
                         {r.status === 'cancelled' && (
-                          <button className="btn btn-secondary btn-sm" onClick={() => updateStatus(r.id, 'confirmed')} style={{ whiteSpace: 'nowrap' }}>
+                          <button className="btn btn-secondary btn-sm" onClick={() => updateStatus(r.id, 'needs_seat')} style={{ whiteSpace: 'nowrap' }}>
                             Gjenopprett
                           </button>
                         )}
@@ -258,13 +268,14 @@ export default function ReservasjonerPage() {
       )}
 
       {/* Toast */}
+      <SmsLog />
       <div className={`toast ${toast ? 'show' : ''}`} role="status" aria-live="polite">
         {toast}
       </div>
 
       {/* Confirmation Modal */}
       {confirmDialog.isOpen && (
-        <div className="modal-overlay">
+        <Modal title="Bekreft handling" onClose={() => setConfirmDialog(prev => ({...prev,isOpen:false}))}>
           <div className="modal-content">
             <h3 style={{ marginBottom: 'var(--space-md)' }}>Bekreft handling</h3>
             <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-xl)' }}>
@@ -285,7 +296,7 @@ export default function ReservasjonerPage() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );

@@ -1,7 +1,10 @@
 'use client';
 
+import { restaurantDate } from '@/lib/utils';
+
+import Modal from '@/components/Modal';
 import React, { useEffect, useState, useCallback } from 'react';
-import { IconCheck, IconX, IconTrash, IconCalendar } from '@/components/Icons';
+import { IconCheck, IconCalendar } from '@/components/Icons';
 import { useUser } from '../layout';
 
 interface MenuItem {
@@ -41,10 +44,7 @@ export default function MenyPage() {
 
     // Daily menu state
     const [dailyTab, setDailyTab] = useState(false);
-    const [dailyDate, setDailyDate] = useState(() => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    });
+    const [dailyDate, setDailyDate] = useState(restaurantDate);
     const [dailySelectedIds, setDailySelectedIds] = useState<Set<number>>(new Set());
     const [dailyIsDaySpecific, setDailyIsDaySpecific] = useState(false);
     const [dailyLoading, setDailyLoading] = useState(false);
@@ -277,8 +277,8 @@ export default function MenyPage() {
                             </p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-                            <label className="form-label" style={{ marginBottom: 0 }}>Dato:</label>
-                            <input
+                            <label htmlFor="meny-field-1" className="form-label" style={{ marginBottom: 0 }}>Dato:</label>
+                            <input id="meny-field-1"
                                 type="date"
                                 className="form-input"
                                 value={dailyDate}
@@ -376,12 +376,12 @@ export default function MenyPage() {
                     <h3>Ny Kategori</h3>
                     <form onSubmit={handleSaveCategory} className="admin-form-grid">
                         <div className="form-group">
-                            <label className="form-label">Kategorinavn (NO)</label>
-                            <input className="form-input" required value={newCategory.name_no} onChange={e => setNewCategory({...newCategory, name_no: e.target.value})} />
+                            <label htmlFor="meny-field-2" className="form-label">Kategorinavn (NO)</label>
+                            <input id="meny-field-2" className="form-input" required value={newCategory.name_no} onChange={e => setNewCategory({...newCategory, name_no: e.target.value})} />
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Kategorinavn (EN)</label>
-                            <input className="form-input" required value={newCategory.name_en} onChange={e => setNewCategory({...newCategory, name_en: e.target.value})} />
+                            <label htmlFor="meny-field-3" className="form-label">Kategorinavn (EN)</label>
+                            <input id="meny-field-3" className="form-input" required value={newCategory.name_en} onChange={e => setNewCategory({...newCategory, name_en: e.target.value})} />
                         </div>
                         <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-md)' }}>
                             <button type="submit" className="btn btn-primary">Lagre</button>
@@ -456,34 +456,34 @@ export default function MenyPage() {
 
             {/* Modal for editing item */}
             {editingItem && (
-                <div className="modal-overlay">
+                <Modal title="Meny" onClose={() => setEditingItem(null)}>
                     <div className="modal-content" style={{ maxWidth: '600px' }}>
                         <h3>{editingItem.id ? 'Rediger Rett' : 'Ny Rett'}</h3>
                         <form onSubmit={handleSaveItem}>
                             <div className="admin-form-grid" style={{ marginTop: 'var(--space-md)' }}>
                                 <div className="form-group">
-                                    <label className="form-label">Rettens navn (NO) *</label>
-                                    <input className="form-input" required value={editingItem.name_no || ''} onChange={e => setEditingItem({...editingItem, name_no: e.target.value})} />
+                                    <label htmlFor="meny-field-4" className="form-label">Rettens navn (NO) *</label>
+                                    <input id="meny-field-4" className="form-input" required value={editingItem.name_no || ''} onChange={e => setEditingItem({...editingItem, name_no: e.target.value})} />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Rettens navn (EN) *</label>
-                                    <input className="form-input" required value={editingItem.name_en || ''} onChange={e => setEditingItem({...editingItem, name_en: e.target.value})} />
+                                    <label htmlFor="meny-field-5" className="form-label">Rettens navn (EN) *</label>
+                                    <input id="meny-field-5" className="form-input" required value={editingItem.name_en || ''} onChange={e => setEditingItem({...editingItem, name_en: e.target.value})} />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Beskrivelse (NO)</label>
-                                    <textarea className="form-textarea" style={{ minHeight: '80px' }} value={editingItem.desc_no || ''} onChange={e => setEditingItem({...editingItem, desc_no: e.target.value})} />
+                                    <label htmlFor="meny-field-6" className="form-label">Beskrivelse (NO)</label>
+                                    <textarea id="meny-field-6" className="form-textarea" style={{ minHeight: '80px' }} value={editingItem.desc_no || ''} onChange={e => setEditingItem({...editingItem, desc_no: e.target.value})} />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Beskrivelse (EN)</label>
-                                    <textarea className="form-textarea" style={{ minHeight: '80px' }} value={editingItem.desc_en || ''} onChange={e => setEditingItem({...editingItem, desc_en: e.target.value})} />
+                                    <label htmlFor="meny-field-7" className="form-label">Beskrivelse (EN)</label>
+                                    <textarea id="meny-field-7" className="form-textarea" style={{ minHeight: '80px' }} value={editingItem.desc_en || ''} onChange={e => setEditingItem({...editingItem, desc_en: e.target.value})} />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Pris (kr) *</label>
-                                    <input className="form-input" type="number" required value={editingItem.price || ''} onChange={e => setEditingItem({...editingItem, price: parseInt(e.target.value) || 0})} />
+                                    <label htmlFor="meny-field-8" className="form-label">Pris (kr) *</label>
+                                    <input id="meny-field-8" className="form-input" type="number" required value={editingItem.price || ''} onChange={e => setEditingItem({...editingItem, price: parseInt(e.target.value) || 0})} />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Status</label>
-                                    <select className="form-select" value={editingItem.is_active ? '1' : '0'} onChange={e => setEditingItem({...editingItem, is_active: e.target.value === '1'})}>
+                                    <label htmlFor="meny-field-9" className="form-label">Status</label>
+                                    <select id="meny-field-9" className="form-select" value={editingItem.is_active ? '1' : '0'} onChange={e => setEditingItem({...editingItem, is_active: e.target.value === '1'})}>
                                         <option value="1">Aktiv</option>
                                         <option value="0">Deaktivert</option>
                                     </select>
@@ -495,7 +495,7 @@ export default function MenyPage() {
                             </div>
                         </form>
                     </div>
-                </div>
+                </Modal>
             )}
 
             <div className={`toast ${toast ? 'show' : ''}`} role="status" aria-live="polite">
@@ -504,7 +504,7 @@ export default function MenyPage() {
 
             {/* Confirmation Modal */}
             {confirmDialog.isOpen && (
-                <div className="modal-overlay">
+                <Modal title="Meny" onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}>
                     <div className="modal-content" style={{ maxWidth: '400px' }}>
                         <h3 style={{ marginBottom: 'var(--space-md)' }}>Bekreft handling</h3>
                         <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-xl)' }}>
@@ -525,19 +525,10 @@ export default function MenyPage() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </Modal>
             )}
             
             <style jsx>{`
-                .modal-overlay {
-                    position: fixed;
-                    inset: 0;
-                    background: rgba(0,0,0,0.5);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 1000;
-                }
                 
                 .modal-content {
                     background: var(--color-bg-card);

@@ -2,11 +2,21 @@ import { NextResponse } from 'next/server';
 import getDb from '@/lib/db';
 import { verifyPassword, createToken, getTokenCookieOptions, getLogoutCookieOptions } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { text, apiError } from '@/lib/validation';
+import { rateLimit } from '@/lib/rate-limit';
+import { clientIp } from '@/lib/client-ip';
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { username, password } = body;
+        const username = text(body?.username, 'username', 3, 64);
+        if (typeof body?.password !== 'string' || body.password.length === 0 || Buffer.byteLength(body.password) > 72) {
+            return NextResponse.json({ error: 'Invalid credentials' }, { status: 400 });
+        }
+        const password = body.password;
+        const address = clientIp(request);
+        await rateLimit('login-user-ip', JSON.stringify([username,address]), 10, 900);
+        await rateLimit('login-ip', address, 30, 900);
 
         if (!username || !password) {
             return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
@@ -51,8 +61,7 @@ export async function POST(request: Request) {
             },
         });
     } catch (error) {
-        console.error('Login error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return apiError(error);
     }
 }
 

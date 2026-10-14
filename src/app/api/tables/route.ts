@@ -1,52 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/db';
+import { getAuthUser } from '@/lib/auth';
+import { integer, boolean, InputError, apiError } from '@/lib/validation';
 
 export async function GET() {
     try {
-        const { getAuthUser } = await import('@/lib/auth');
-        const user = await getAuthUser();
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+        if (!await getAuthUser()) return Response.json({ error: 'Unauthorized' }, { status: 401 });
         const sql = await getDb();
-        const rows = await sql`SELECT id, name, capacity, is_active FROM tables_config ORDER BY CASE WHEN name ~ '^[0-9]+$' THEN CAST(name AS INTEGER) ELSE 999999 END ASC, name ASC`;
-        return NextResponse.json(rows);
-    } catch (error) {
-        console.error('Tables GET error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
+        return Response.json(await sql`SELECT id,name,capacity,is_active FROM tables_config ORDER BY id`);
+    } catch (error) { return apiError(error); }
 }
-
 export async function PUT(request: NextRequest) {
     try {
-        const { getAuthUser } = await import('@/lib/auth');
-        const user = await getAuthUser();
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-        if (user.role !== 'admin' && user.role !== 'staff') {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
-
+        if (!await getAuthUser()) return Response.json({ error: 'Unauthorized' }, { status: 401 });
         const body = await request.json();
-        let { id, capacity, is_active } = body;
-
-        id = Number(id);
-        capacity = Number(capacity);
-        const isActiveVal = (is_active === true || is_active === 1) ? 1 : 0;
-
-        if (isNaN(id) || !Number.isInteger(id) || id <= 0) {
-            return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
-        }
-        if (isNaN(capacity) || !Number.isInteger(capacity) || capacity < 0) {
-            return NextResponse.json({ error: 'Invalid capacity' }, { status: 400 });
-        }
-
+        const id = integer(body?.id, 'table ID');
+        const capacity = integer(body?.capacity, 'capacity', 0, 60);
+        const active = boolean(body?.is_active, 'active flag');
         const sql = await getDb();
-        await sql`UPDATE tables_config SET capacity = ${capacity}, is_active = ${isActiveVal === 1} WHERE id = ${id}`;
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Tables PUT error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
+        await sql.begin(async tx => {
+            await tx`SELECT pg_advisory_xact_lock(728194)`;
+            const result = await tx`UPDATE tables_config SET capacity = ${capacity}, is_active = ${active} WHERE id = ${id}`;
+            if (!result.count) throw new InputError('Table not found', 404);
+            await tx`UPDATE reservations r SET status = 'needs_seat' WHERE status = 'confirmed'
+                AND id IN (SELECT reservation_id FROM table_assignments WHERE table_id = ${id})
+                AND guests_count > (SELECT COALESCE(SUM(t.capacity),0) FROM table_assignments a JOIN tables_config t ON t.id = a.table_id WHERE a.reservation_id = r.id AND t.is_active)`;
+        });
+        return Response.json({ success: true });
+    } catch (error) { return apiError(error); }
 }

@@ -1,29 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/db';
+import { getAuthUser } from '@/lib/auth';
+import { text, integer, apiError } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
     try {
-        const { getAuthUser } = await import('@/lib/auth');
-        const user = await getAuthUser();
-        if (!user || user.role !== 'admin') {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
+        if ((await getAuthUser())?.role !== 'admin') return Response.json({ error: 'Admin access required' }, { status: 403 });
         const body = await request.json();
-        const { name_no, name_en, sort_order } = body;
-
-        if (!name_no || !name_en) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-        }
-
+        const name_no = text(body?.name_no, 'Norwegian name', 1, 100);
+        const name_en = text(body?.name_en, 'English name', 1, 100);
+        const sort_order = integer(body?.sort_order ?? 0, 'sort order', 0, 10000);
         const sql = await getDb();
-        const [newCat] = await sql`INSERT INTO menu_categories (name_no, name_en, sort_order) 
-                                   VALUES (${name_no}, ${name_en}, ${sort_order || 0})
-                                   RETURNING id`;
-
-        return NextResponse.json({ success: true, id: Number(newCat.id) });
-    } catch (error) {
-        console.error('Menu category POST error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
+        const [created] = await sql`INSERT INTO menu_categories (name_no,name_en,sort_order) VALUES (${name_no},${name_en},${sort_order}) RETURNING id`;
+        return Response.json({ success: true, id: created.id }, { status: 201 });
+    } catch (error) { return apiError(error); }
 }

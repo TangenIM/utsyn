@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -9,6 +10,7 @@ export default function AdminPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [displayName, setDisplayName] = useState('');
+    const [setupToken, setSetupToken] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -20,13 +22,12 @@ export default function AdminPage() {
                 return;
             }
             // Not logged in, check if setup needed
-            return fetch('/api/setup').then(r => r.json()).then(data => {
+            return fetch('/api/setup').then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(data => {
                 setNeedsSetup(data.needsSetup);
             });
         }).catch(() => {
-            fetch('/api/setup').then(r => r.json()).then(data => {
-                setNeedsSetup(data.needsSetup);
-            });
+            setError('Kunne ikke koble til serveren. Last siden på nytt for å prøve igjen.');
+            setNeedsSetup(false);
         });
     }, [router]);
 
@@ -61,7 +62,7 @@ export default function AdminPage() {
             const res = await fetch('/api/setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, display_name: displayName }),
+                body: JSON.stringify({ username, password, display_name: displayName, setup_token: setupToken }),
             });
             const data = await res.json();
             if (res.ok) {
@@ -92,7 +93,7 @@ export default function AdminPage() {
         <div className="login-page">
             <div className="login-card">
                 <div style={{ textAlign: 'center', marginBottom: 'var(--space-lg)' }}>
-                    <img src="/utsyn_logo.png" alt="Restaurant Utsyn" style={{ height: '160px', width: 'auto', margin: '0 auto var(--space-md)' }} />
+                    <Image width={300} height={200} src="/utsyn_logo.png" alt="Restaurant Utsyn" style={{ height: '160px', width: 'auto', margin: '0 auto var(--space-md)' }} />
                 </div>
 
                 {needsSetup ? (
@@ -103,6 +104,11 @@ export default function AdminPage() {
                         </p>
                         <form onSubmit={handleSetup}>
                             {error && <div className="login-error" role="alert">{error}</div>}
+                            <div className="form-group">
+                                <label htmlFor="setup-token" className="form-label">Oppsettsnøkkel *</label>
+                                <input id="setup-token" type="password" className="form-input" value={setupToken} onChange={e => setSetupToken(e.target.value)} required autoComplete="off" />
+                                <p>Bruk verdien for SETUP_TOKEN fra serverens miljøvariabler.</p>
+                            </div>
                             <div className="form-group">
                                 <label htmlFor="setup-name" className="form-label">Visningsnavn</label>
                                 <input
@@ -135,9 +141,9 @@ export default function AdminPage() {
                                     className="form-input"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Minst 6 tegn"
+                                    placeholder="Minst 12 tegn"
                                     required
-                                    minLength={6}
+                                    minLength={12}
                                     autoComplete="new-password"
                                 />
                             </div>

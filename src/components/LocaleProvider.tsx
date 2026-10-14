@@ -22,13 +22,14 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
         const saved = localStorage.getItem('utsyn_locale') as Locale;
         if (saved === 'en' || saved === 'no') {
             setLocaleState(saved);
+            document.documentElement.lang = saved === 'no' ? 'nb' : 'en';
         }
     }, []);
 
     const setLocale = useCallback((newLocale: Locale) => {
         setLocaleState(newLocale);
         localStorage.setItem('utsyn_locale', newLocale);
-        document.documentElement.lang = newLocale === 'no' ? 'no' : 'en';
+        document.documentElement.lang = newLocale === 'no' ? 'nb' : 'en';
     }, []);
 
     const translate = useCallback((key: TranslationKey) => {

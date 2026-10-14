@@ -1,36 +1,15 @@
 export function generateConfirmationCode(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) {
-        code += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return code;
+    return crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
 }
 
-export function formatDate(dateStr: string, locale: string = 'no'): string {
-    const date = new Date(dateStr + 'T00:00:00');
-    const options: Intl.DateTimeFormatOptions = {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    };
-    const loc = locale === 'no' ? 'nb-NO' : 'en-US';
-    return date.toLocaleDateString(loc, options);
-}
-
-export function formatTime(time: string): string {
-    return time.replace(':', '.');
-}
-
-export function getDayName(dayOfWeek: number, locale: string = 'no'): string {
-    const no = ['Søndag', 'Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag'];
-    const en = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return locale === 'no' ? no[dayOfWeek] : en[dayOfWeek];
+export function restaurantDate(now = new Date()): string {
+    return new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Oslo',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
 }
 
 export function generateTimeSlots(openTime: string, closeTime: string, intervalMinutes: number = 15, cutoffMinutes: number = 45): string[] {
     const slots: string[] = [];
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(openTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(closeTime) ||
+        !Number.isInteger(intervalMinutes) || intervalMinutes < 1 || !Number.isInteger(cutoffMinutes) || cutoffMinutes < 0) return slots;
     const [openH, openM] = openTime.split(':').map(Number);
     const [closeH, closeM] = closeTime.split(':').map(Number);
 
@@ -45,16 +24,10 @@ export function generateTimeSlots(openTime: string, closeTime: string, intervalM
     return slots;
 }
 
-export function sanitizeInput(input: string): string {
-    return input
-        .replace(/[<>]/g, '')
-        .trim()
-        .slice(0, 500);
-}
-
 export function validatePhone(phone: string): boolean {
-    const cleaned = phone.replace(/[\s\-\+\(\)]/g, '');
-    return /^\d{8,15}$/.test(cleaned);
+    const cleaned = phone.trim().replace(/[\s()\-]/g, '');
+    const normalized = cleaned.startsWith('00') ? `+${cleaned.slice(2)}` : /^\d{8}$/.test(cleaned) ? `+47${cleaned}` : cleaned;
+    return /^\+[1-9]\d{7,14}$/.test(normalized);
 }
 
 export function validateEmail(email: string): boolean {

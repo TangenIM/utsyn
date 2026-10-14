@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import getDb from '@/lib/db';
+import type postgres from 'postgres';
+import { validDate, integer, InputError, apiError } from '@/lib/validation';
 
 function isValidIsoDate(dateStr: string | null): boolean {
-    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+    return validDate(dateStr);
 }
 
 /**
@@ -19,10 +18,12 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const date = searchParams.get('date');
 
+        if (!isValidIsoDate(date)) throw new InputError('Invalid date');
+
         const sql = await getDb();
         const categories = await sql`SELECT * FROM menu_categories ORDER BY sort_order`;
 
-        let items: any[] = [];
+        let items: postgres.Row[] = [];
         let isDaySpecific = false;
 
         if (isValidIsoDate(date)) {
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
             items = await sql`SELECT * FROM menu_items WHERE is_active = true`;
         }
 
-        const itemsByCategory = new Map<number, any[]>();
+        const itemsByCategory = new Map<number, postgres.Row[]>();
         for (const item of items) {
             const catId = Number(item.category_id);
             const list = itemsByCategory.get(catId) || [];
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
             itemsByCategory.set(catId, list);
         }
 
-        const menuWithItems = categories.map((cat: any) => ({
+        const menuWithItems = categories.map((cat) => ({
             ...cat,
             items: itemsByCategory.get(Number(cat.id)) || []
         }));
@@ -59,8 +60,7 @@ export async function GET(request: NextRequest) {
             headers: { 'Cache-Control': 'no-store, max-age=0' }
         });
     } catch (error) {
-        console.error('Menu daily GET error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return apiError(error);
     }
 }
 
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { date, item_ids } = body;
+        const { date, item_ids } = body || {};
 
         if (!isValidIsoDate(date)) {
             return NextResponse.json({ error: 'Invalid date' }, { status: 400 });
@@ -87,25 +87,24 @@ export async function POST(request: NextRequest) {
         if (!Array.isArray(item_ids)) {
             return NextResponse.json({ error: 'item_ids must be an array' }, { status: 400 });
         }
+        if (item_ids.length > 500) throw new InputError('Too many menu items');
+        const ids = [...new Set(item_ids.map(item => integer(item, 'menu item ID')))];
 
         const sql = await getDb();
-        await sql.begin(async (t: any) => {
+        await sql.begin(async (t) => {
+            await t`SELECT pg_advisory_xact_lock(728196)`;
             // Remove existing assignments for this date
             await t`DELETE FROM menu_day_items WHERE date = ${date}`;
             
             // Insert new assignments
-            for (const itemId of item_ids) {
-                const id = Number(itemId);
-                if (!isNaN(id) && id > 0) {
+            for (const id of ids) {
                     await t`INSERT INTO menu_day_items (date, menu_item_id) VALUES (${date}, ${id}) ON CONFLICT DO NOTHING`;
-                }
             }
         });
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Menu daily POST error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return apiError(error);
     }
 }
 
@@ -129,11 +128,13 @@ export async function DELETE(request: NextRequest) {
         }
 
         const sql = await getDb();
-        await sql`DELETE FROM menu_day_items WHERE date = ${date}`;
+        await sql.begin(async tx => {
+            await tx`SELECT pg_advisory_xact_lock(728196)`;
+            await tx`DELETE FROM menu_day_items WHERE date = ${date}`;
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Menu daily DELETE error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return apiError(error);
     }
 }

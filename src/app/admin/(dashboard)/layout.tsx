@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import React, { useEffect, useState, createContext, useContext } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -56,7 +57,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
       <header className="header">
         <div className="header-inner">
           <Link href="/" className="logo">
-            <img src="/utsyn_logo.png" alt="Restaurant Utsyn Logo" className="logo-img" />
+            <Image width={300} height={200} src="/utsyn_logo.png" alt="Restaurant Utsyn Logo" className="logo-img" />
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
             <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
