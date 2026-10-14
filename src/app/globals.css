@@ -1201,6 +1201,7 @@ body {
 }
 
 .confirmation-code {
+  max-width: 100%;
   background: var(--color-bg-alt);
   border: 2px dashed var(--color-border);
   border-radius: var(--radius-md);
@@ -1217,11 +1218,18 @@ body {
 }
 
 .confirmation-code-value {
+  display: block;
+  overflow-wrap: anywhere;
   font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-primary);
   letter-spacing: 0.2em;
   font-family: 'Courier New', monospace;
+}
+
+@media (max-width: 480px) {
+  .confirmation { padding: var(--space-xl) var(--space-sm); }
+  .confirmation-code-value { font-size: clamp(1rem, 4vw, 2rem); letter-spacing: 0.08em; }
 }
 
 /* ===== WIZARD ACTIONS ===== */

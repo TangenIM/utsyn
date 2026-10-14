@@ -43,6 +43,13 @@ function BookingWizard() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const requestKey = useRef<{ payload: string; key: string } | null>(null);
+    const confirmationHeading = useRef<HTMLHeadingElement>(null);
+    useEffect(() => {
+        if (step === 6) {
+            window.scrollTo({top:0,behavior:'instant'});
+            confirmationHeading.current?.focus({preventScroll:true});
+        }
+    },[step]);
 
     // Calendar state
     const todayStr = restaurantDate();
@@ -259,14 +266,16 @@ function BookingWizard() {
                     {step === 6 ? (
                         <div className="confirmation animate-in">
                             <div className="confirmation-icon" aria-hidden="true"><IconCheck size={40} /></div>
-                            <h2>{t('confirm_title')}</h2>
+                            <h2 ref={confirmationHeading} tabIndex={-1}>{t('confirm_title')}</h2>
                             <h3>{t('confirm_subtitle')}</h3>
                             <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-xl)' }}>
                                 {locale === 'no' ? 'Bestillingen er mottatt. Ta vare på koden nedenfor. Bordet bekreftes av restauranten.' : 'Your booking has been received. Keep the code below. The restaurant will confirm your table.'}
                             </p>
-                            <p role="status">{smsStatus === 'queued' || smsStatus === 'sent'
+                            <p role="status">{smsStatus === 'delivered' || smsStatus === 'read'
+                                ? (locale === 'no' ? 'SMS-varslingen er levert.' : 'The SMS notification was delivered.')
+                                : smsStatus === 'queued' || smsStatus === 'sent'
                                 ? (locale === 'no' ? 'SMS-varslingen er sendt til leverandøren.' : 'The SMS notification has been sent to the provider.')
-                                : (locale === 'no' ? 'SMS er ikke sendt. Bestillingen er likevel lagret. Ta vare på bestillingskoden.' : 'No SMS was sent. Your booking is saved. Keep your booking code.')}</p>
+                                : (locale === 'no' ? 'SMS-levering kunne ikke bekreftes. Bestillingen er lagret. Ta vare på bestillingskoden.' : 'SMS delivery could not be confirmed. Your booking is saved. Keep your booking code.')}</p>
                             <div className="confirmation-code">
                                 <span className="confirmation-code-label">{t('confirm_code')}</span>
                                 <span className="confirmation-code-value">{confirmationCode}</span>
