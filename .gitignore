@@ -19,6 +19,8 @@ next-env.d.ts
 data/
 work/
 cookies.txt
+*.dump
+*.backup
 
 # Editor, OS, and temporary files
 .vscode/

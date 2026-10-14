@@ -1,10 +1,12 @@
 # Operations reference
 
+For first installation, use the [README](../README.md). Detailed steps are in [Deployment](DEPLOYMENT.md), [Configuration](CONFIGURATION.md), [SMS](SMS.md), [Maintenance](MAINTENANCE.md), [Testing](TESTING.md), and [Troubleshooting](TROUBLESHOOTING.md). Staff should use the [Norwegian guide](STAFF_GUIDE.no.md); developers can use the [source and data guide](DEVELOPMENT.md).
+
 ## Hosting and data
 
 Use Node.js 24 LTS and PostgreSQL with persistent storage. Users, reservations, menus, SMS attempts, and floor layouts live in PostgreSQL. Database initialization serializes schema changes with a transaction lock. Back up the database before upgrading an existing installation.
 
-Publish through HTTPS. Put a gateway or reverse proxy in front of Next.js, limit API bodies to 32 KiB, and replace client-supplied `X-Forwarded-For` with the verified client IP. Prevent direct access to the application server, then set `TRUST_PROXY=true`. Login and booking limits use the last valid address in that controlled header. Without explicit trust, headers are ignored and unknown clients share a conservative limit. Set the exact public origin in `APP_URL`. Foreign-origin mutation requests are rejected. Monitor `/api/health`: 200 means the database is ready; 503 means unavailable. It returns no credentials or guest data.
+Publish through HTTPS. Put a gateway or reverse proxy in front of Next.js, limit API bodies to 32 KiB, and replace client-supplied `X-Forwarded-For` with the verified client IP. Prevent direct access to the application server, then set `TRUST_PROXY=true`. Login and booking limits use the last address in that controlled header if it is valid. Without explicit trust, headers are ignored and unknown clients share a conservative limit. Set the exact public origin in `APP_URL`. Foreign-origin mutation requests are rejected. Monitor `/api/health`: 200 means the database is ready; 503 means unavailable. It returns no credentials or guest data.
 
 Each application process uses up to five PostgreSQL connections. Reserve enough connections for your number of instances. The school operator manages hosting, HTTPS, access control, backups, recovery tests, monitoring, and retention of guest information. Choose a retention period before opening the site to the public.
 
@@ -44,6 +46,6 @@ Tooling uses the latest compatible ESLint 9 and TypeScript 6 releases. ESLint 10
 
 If health checks fail, inspect the database service, URL, firewall, and TLS certificate. Check saved reservations before asking guests to repeat requests whose browser response was lost.
 
-Authorization checks active database users on each request. Removed staff lose access immediately. Keep a separate administrator for recovery. The last administrator cannot be deleted or demoted through the API.
+Authorization checks active database users on each request. Removed staff lose access immediately. Keep a separate administrator for recovery. The last administrator cannot be deleted. The user interface creates and deletes accounts; it does not edit existing roles or passwords.
 
 Back up PostgreSQL daily with provider backups or `pg_dump` and test restoration to a separate database. Keep environment files, database exports, provider tokens, and guest records out of Git. Rotate exposed credentials through the provider and replace the host's private variables.
