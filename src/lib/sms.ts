@@ -11,7 +11,7 @@ export async function sendSms(phone: string, message: string) {
             settings[row.key] = row.value;
         }
 
-        const provider = settings['sms_provider'] || 'webhook';
+        const provider = (settings['sms_provider'] || 'webhook').trim().toLowerCase();
 
         if (provider === 'twilio') {
             const sid = (settings['sms_twilio_sid'] || '').trim();
@@ -36,16 +36,24 @@ export async function sendSms(phone: string, message: string) {
                 });
                 
                 if (!res.ok) {
-                    console.error('Twilio error:', await res.text());
+                    console.error('Twilio error:', await res.text(), {
+                        status: res.status,
+                        provider,
+                        sid,
+                        tokenLength: token.length,
+                        from,
+                        url,
+                    });
                     return false;
                 }
                 return true;
             }
 
             console.error('Twilio SMS skipped because configuration is incomplete', {
-                hasSid: Boolean(sid),
-                hasToken: Boolean(token),
-                hasFrom: Boolean(from),
+                provider,
+                sid: sid || null,
+                tokenLength: token.length,
+                from: from || null,
             });
         } else if (provider === 'webhook') {
             const webhookUrl = settings['sms_webhook_url']?.trim();

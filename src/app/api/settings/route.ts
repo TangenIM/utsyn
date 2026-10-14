@@ -54,10 +54,13 @@ export async function PUT(request: Request) {
             }
             // Coerce to string and basic length validation to prevent DB abuse
             const stringValue = String(value);
-            if (stringValue.length > 2000) {
+            const normalizedValue = ['sms_provider', 'sms_webhook_url', 'sms_twilio_sid', 'sms_twilio_token', 'sms_twilio_from'].includes(key)
+                ? stringValue.trim()
+                : stringValue;
+            if (normalizedValue.length > 2000) {
                 return NextResponse.json({ error: `Value for ${key} is too long` }, { status: 400 });
             }
-            filteredEntries.push([key, stringValue]);
+            filteredEntries.push([key, normalizedValue]);
         }
 
         const sql = await getDb();
