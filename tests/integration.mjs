@@ -37,7 +37,7 @@ try {
     await request('/api/users','GET',undefined,'',403);
     await request('/api/settings?scope=admin','GET',undefined,'',403);
     const publicSettings = (await request('/api/settings')).result;
-    assert.ok(Object.keys(publicSettings).every(key => !key.startsWith('sms_'))); checks++;
+    assert.ok(Object.keys(publicSettings).every(key => !key.startsWith('sms_') && key !== 'email_staff_recipients')); checks++;
     await request('/api/users','POST',{username:'bad',password:'short',role:'staff'},cookie,400);
     await request('/api/users','POST',{username:{},password:secret,role:'staff'},cookie,400);
     const staff = (await request('/api/users','POST',{username:'test_staff',password:secret,role:'staff'},cookie,201)).result;
