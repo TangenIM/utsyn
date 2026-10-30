@@ -18,8 +18,11 @@ Begin with the visible error and the appropriate row below. Keep credentials, gu
 | Date or slot cannot be booked | Oslo date/time, opening rules, special date, cutoff, capacity | Review **Innstillinger** and the public availability screen |
 | Confirmation is rejected | Enough active seats for this reservation | Reassign tables for the correct date/slot and confirm only after capacity is sufficient |
 | A save appears lost | API response, selected date, reload, database | Check the saved record before repeating the action; ensure instances use the same database |
+| Email is not sent, log shows `smtp_auth` or `smtp_unreachable` | **Varslingslogg** error code | See the error table in [Email notifications](EMAIL.md); check `SMTP_*` values and that outbound port 587 or 465 is open |
+| Guests do not receive email but the log says **Sendt** | Guest's spam folder, sender address | The SMTP server accepted it. Ask the guest to check spam; the sender is `SMTP_USER` |
+| Staff get no mail for new bookings | `EMAIL_STAFF_RECIPIENTS` and **Innstillinger** | Check the addresses; failures are only in the server log (`Staff notification failed`) |
 | SMS is disabled despite admin selection | `SMS_PROVIDER` in the host environment | Environment values override database settings; correct it and restart |
-| SMS is queued or sent but not delivered | **SMS-logg** and Twilio logs | Refresh delivery status; inspect the provider error, destination permissions, and recipient |
+| SMS is queued or sent but not delivered | **Varslingslogg** and Twilio logs | Refresh delivery status; inspect the provider error, destination permissions, and recipient |
 | SMS retry is blocked | Current reservation state or uncertain delivery | Check the provider logs before sending manually; do not create a replacement booking |
 | Menu is missing | Selected date, daily menu, active dish/category | Check both language fields and that dishes are selected for the service date |
 | Data vanished after redeployment | Database URL and database persistence | Stop writes, verify which database is connected, and ask the operator to restore if needed |
@@ -52,4 +55,4 @@ Keep the previous release available. Restore service through the hosting platfor
 
 ## Where to continue
 
-[Configuration](CONFIGURATION.md) explains variables. [SMS](SMS.md) explains provider states and safe retry. [Maintenance](MAINTENANCE.md) explains restore and migration. [Testing](TESTING.md) gives the isolated test procedure.
+[Configuration](CONFIGURATION.md) explains variables. [Email](EMAIL.md) and [SMS](SMS.md) explain provider states and safe retry. [Maintenance](MAINTENANCE.md) explains restore and migration. [Testing](TESTING.md) gives the isolated test procedure.

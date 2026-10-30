@@ -7,8 +7,8 @@ This guide assumes you have completed steps 1–4 of the [README](../README.md).
 | Requirement | Why it matters |
 | --- | --- |
 | Node.js 24 LTS and npm | Builds and runs this Next.js application |
-| Persistent PostgreSQL | Stores users, bookings, settings, menus, tables, and SMS attempts |
-| Outbound access to PostgreSQL and HTTPS | Connects to the database and SMS provider |
+| Persistent PostgreSQL | Stores users, bookings, settings, menus, tables, and notification attempts |
+| Outbound access to PostgreSQL and HTTPS | Connects to the database and the SMTP server (port 587 or 465) |
 | Public HTTPS domain | Protects logins and guest information |
 | Private server environment variables | Keeps credentials out of browser code and Git |
 | Restart policy, logs, and monitoring | Restores service after a crash or server restart |
@@ -28,10 +28,10 @@ A static-only host is unsuitable. This repository contains no Cloudflare Worker 
 6. Set the start command to `npm start`. If the host supplies `PORT`, Next.js uses it. Otherwise the server uses 3000.
 7. Add the values from [Configuration](CONFIGURATION.md) as private server variables. Make the database URL available to the running server; these pages need live data at request time.
 8. Attach the public domain and enable HTTPS using the host's domain settings.
-9. Set `APP_URL` to that exact public HTTPS origin, then restart or redeploy.
+9. Set `SMS_PROVIDER=email`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `EMAIL_STAFF_RECIPIENTS` (see [Email notifications](EMAIL.md)). Set `APP_URL` to that exact public HTTPS origin, then restart or redeploy.
 10. Confirm how the gateway handles `X-Forwarded-For`. Set `TRUST_PROXY=true` only when the host overwrites the incoming value with the actual client IP and prevents direct backend access. If it appends arbitrary client input or the guarantee is unclear, leave it `false` until the operator supplies a safe configuration.
 11. Configure a health check on `/api/health`. Accept HTTP 200; investigate 503. Allow time for initial database setup.
-12. Follow README steps 6–8 to create administrators, configure the restaurant, and check a real booking and SMS delivery.
+12. Follow README steps 6–8 to create administrators, configure the restaurant, and check a real booking and that the confirmation email arrives. Email setup: [Email notifications](EMAIL.md).
 
 Keep database backups separate from the deployment service. Deleting or replacing an application deployment must not delete the database.
 

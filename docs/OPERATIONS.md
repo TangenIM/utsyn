@@ -10,7 +10,10 @@ Publish through HTTPS. Put a gateway or reverse proxy in front of Next.js, limit
 
 Each application process uses up to five PostgreSQL connections. Reserve enough connections for your number of instances. The school operator manages hosting, HTTPS, access control, backups, recovery tests, monitoring, and retention of guest information. Choose a retention period before opening the site to the public.
 
-## SMS behavior
+## Notification behavior
+
+Email is the default channel and SMS is the backup; both follow the rules below. See [Email notifications](EMAIL.md). Switch channel under **Innstillinger**, unless `SMS_PROVIDER` is set on the host.
+
 
 Events are new booking, table confirmation, cancellation, and no-show. New bookings remain unconfirmed until staff assign enough seats and confirm them. Repeating the same status change does not send another notification. Booking retries with the same request key return the existing booking.
 
