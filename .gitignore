@@ -6,6 +6,7 @@ build/
 dist/
 .open-next/
 .wrangler/
+.aislop/
 .netlify/
 .vercel/
 coverage/
