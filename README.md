@@ -4,13 +4,14 @@ Booking and restaurant administration for Tangen videregående skole. Guests use
 
 ## What the school needs to provide
 
-The code includes the website, administration, database initialization, and SMS integration. The school supplies:
+The code includes the website, administration, database initialization, and email and SMS notifications. The school supplies:
 
 - A host that runs a Node.js server, with Node.js 24 LTS and outbound HTTPS access.
 - A persistent PostgreSQL database, its connection address, and backups.
 - A public domain with HTTPS.
 - Two private secrets for login sessions and first-administrator setup.
-- For SMS: a school-owned Twilio account, its auth token, and an SMS-capable sender number.
+- For email: an SMTP account (host, port 587 or 465, user, password) used as sender. See [Email notifications](docs/EMAIL.md).
+- Optional SMS backup: a school-owned Twilio account, its auth token, and an SMS-capable sender number.
 - Staff accounts, correct opening times, menus, contact information, and a guest-data retention policy.
 
 Bookings and logins need a running server. Uploading only HTML files to a static host will not work. Use the deployment instructions below for a Node.js host or Linux server. Other hosts must meet the same requirements; platform-specific adapters are not included.
@@ -23,7 +24,8 @@ Bookings and logins need a running server. Uploading only HTML files to a static
 | Deploy to a hosted Node.js service or Linux server | [Deployment](docs/DEPLOYMENT.md) |
 | Understand every environment variable | [Configuration](docs/CONFIGURATION.md) |
 | Use reservations, tables, menus, and staff accounts | [Staff guide, Norwegian](docs/STAFF_GUIDE.no.md) |
-| Enable SMS and check actual delivery | [SMS and Twilio](docs/SMS.md) |
+| Set up email notifications | [Email notifications](docs/EMAIL.md) |
+| Use SMS as a backup and check delivery | [SMS and Twilio](docs/SMS.md) |
 | Back up, restore, update, or move the site | [Maintenance](docs/MAINTENANCE.md) |
 | Run tests and see what was verified | [Testing and verification](docs/TESTING.md) |
 | Fix a failed login, booking, database connection, or SMS | [Troubleshooting](docs/TROUBLESHOOTING.md) |
@@ -91,13 +93,14 @@ SETUP_TOKEN=PASTE_THE_SECOND_GENERATED_SECRET
 APP_URL=http://localhost:3000
 TRUST_PROXY=false
 SMS_PROVIDER=disabled
+# For real email, see docs/EMAIL.md: SMS_PROVIDER=email plus SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD
 ```
 
 For a public deployment, set `APP_URL` to the exact HTTPS origin, such as `https://utsyn.example.no`. Do not add `/admin`, another path, or query parameters. For local use, open the same hostname you put in `APP_URL`; `localhost` and `127.0.0.1` are different origins.
 
 If your database provider requires TLS, set `DATABASE_SSL=require`. If it uses a private certificate authority, also supply `DB_CA_CERT`. [Configuration](docs/CONFIGURATION.md) explains certificates, file precedence, and every variable.
 
-Keep SMS disabled while checking installation. To enable real messages later, follow [SMS and Twilio](docs/SMS.md). The production variable is `TWILIO_AUTH_TOKEN`; an old variable named `AUTHTOKEN` is not read by the application.
+Keep notifications disabled while checking installation. To enable real messages, follow [Email notifications](docs/EMAIL.md). SMS is a backup channel: [SMS and Twilio](docs/SMS.md). The production variable is `TWILIO_AUTH_TOKEN`; an old variable named `AUTHTOKEN` is not read by the application.
 
 ### 4. Install and check the application
 
@@ -157,7 +160,7 @@ The [Norwegian staff guide](docs/STAFF_GUIDE.no.md) explains the daily workflow.
 - Create one test booking with a phone number whose owner agrees to receive test messages. Note its booking code.
 - Reload the admin page and confirm the booking is still present.
 - Assign enough seats and confirm the reservation.
-- If SMS is enabled, open **SMS-logg**, refresh delivery status, and verify **Levert** for the expected events. Provider acceptance alone does not prove delivery.
+- If SMS is enabled, open **Varslingslogg**, refresh delivery status, and verify **Levert** for the expected events. Provider acceptance alone does not prove delivery.
 - Cancel the test reservation so it does not occupy capacity for a real service.
 - Restart the deployed application and check login, reservations, menus, and table layout again.
 - Enable backups, test one restore to a separate database, and assign a person to monitor failures.

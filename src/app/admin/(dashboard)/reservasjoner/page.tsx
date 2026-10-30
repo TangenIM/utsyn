@@ -64,7 +64,7 @@ export default function ReservasjonerPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        showToast(data.sms?.status === 'failed' ? 'Status lagret. SMS feilet: ' + (data.sms.error_code || '') : 'Status oppdatert!');
+        showToast(data.sms?.status === 'failed' ? 'Status lagret. Varsling feilet: ' + (data.sms.error_code || '') : 'Status oppdatert!');
         fetchReservations();
       } else {
         const data = await res.json().catch(() => null);
@@ -72,7 +72,7 @@ export default function ReservasjonerPage() {
       }
     } catch (err) {
       console.error('Error updating status:', err);
-      showToast('Kontroller reservasjonen og SMS-loggen før du prøver igjen.');
+      showToast('Kontroller reservasjonen og varslingsloggen før du prøver igjen.');
     }
   };
 
@@ -184,7 +184,7 @@ export default function ReservasjonerPage() {
         <span style={{ fontWeight: 600, color: 'var(--color-text)', marginRight: 'var(--space-xs)' }}>Statusforklaring:</span>
         <span><span className="status-badge status-needs_seat" style={{ marginRight: '4px' }}>Venter på bord</span> Ny reservasjon, trenger bordtildeling</span>
         <span>→</span>
-        <span><span className="status-badge status-confirmed" style={{ marginRight: '4px' }}>Bekreftet</span> Bord tildelt. Se SMS-status for varslingen</span>
+        <span><span className="status-badge status-confirmed" style={{ marginRight: '4px' }}>Bekreftet</span> Bord tildelt. Se varslingsstatus</span>
         <span>→</span>
         <span><span className="status-badge status-completed" style={{ marginRight: '4px' }}>Fullført</span> Gjesten har vært og gått</span>
       </div>
@@ -223,7 +223,7 @@ export default function ReservasjonerPage() {
                   <td>
                     <span className={`status-badge status-${r.status}`}>
                       {statusLabel(r.status)}
-                      {r.sms_status && <small style={{ display: 'block' }}>SMS: {r.sms_status}{r.sms_error_code ? ' (' + r.sms_error_code + ')' : ''}</small>}
+                      {r.sms_status && <small style={{ display: 'block' }}>Varsel: {r.sms_status}{r.sms_error_code ? ' (' + r.sms_error_code + ')' : ''}</small>}
                     </span>
                   </td>
                   <td>

@@ -13,7 +13,8 @@ This project uses Next.js App Router, React, TypeScript, PostgreSQL through `pos
 | `src/components` | Shared navigation, dialogs, locale, accessibility controls, and SMS log |
 | `src/lib/db.ts` | Database connection, additive schema initialization, and defaults |
 | `src/lib/reservations.ts`, `availability.ts` | Booking, seating, and opening rules |
-| `src/lib/sms.ts` | Templates, notification attempts, Twilio/webhook calls, delivery polling |
+| `src/lib/sms.ts` | Templates, notification attempts, channel choice, Twilio/webhook calls, delivery polling |
+| `src/lib/email.ts` | SMTP sending and HTML layout |
 | `src/lib/validation.ts` | Input types, boundaries, phone/date validation, API errors |
 | `src/lib/auth.ts` | Password hashing, signed cookies, active-user checks |
 | `src/lib/client-ip.ts`, `rate-limit.ts` | Explicit proxy trust and database-backed limits |
@@ -52,7 +53,7 @@ The database schema is defined in `src/lib/db.ts`, not an external schema dump. 
 - Notification events, status, provider SID, and error code are stored separately from reservations.
 - Password hashes are bcrypt, not reversible passwords. Login tokens expire after eight hours and active users/roles are checked against PostgreSQL on protected requests.
 
-No guest account, payment processing, file-upload service, outbound email service, automatic retention worker, or inbound SMS processing is included.
+No guest account, payment processing, file-upload service, automatic retention worker, or inbound SMS processing is included.
 
 ## Main API groups
 

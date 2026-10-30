@@ -14,12 +14,12 @@ Hvis du har glemt passordet, kontakt en administrator. Nettstedet sender ikke e-
 ## Behandle en ny reservasjon
 
 1. Åpne **Reservasjoner** og velg dato. Bruk statusfilteret ved behov.
-2. En ny bestilling står som **Venter på bord**. Den første SMS-en betyr at bestillingen er mottatt, ikke at bordet er bekreftet.
+2. En ny bestilling står som **Venter på bord**. Den første e-posten til gjesten betyr at bestillingen er mottatt, ikke at bordet er bekreftet.
 3. Kontroller navn, antall gjester, tidspunkt, telefon og eventuelle kommentarer eller allergier.
 4. Åpne **Bord** og velg samme dato og tidspunkt.
 5. Tildel ett eller flere aktive bord. Samlet kapasitet må være minst like stor som antall gjester. Et bord som allerede er tildelt en annen reservasjon i samme tidsluke, kan ikke brukes samtidig.
 6. Bekreft reservasjonen når nok plasser er tildelt. Kontroller bekreftelsen på skjermen.
-7. Hvis SMS er aktivert, kontroller **SMS-logg**. **Levert** betyr at leverandøren har rapportert levering. Se [SMS-veiledningen](SMS.md) ved feil.
+7. Kontroller **Varslingslogg**. **Sendt** betyr at e-postserveren har tatt imot meldingen. Se [e-postveiledningen](EMAIL.md) ved feil.
 
 Hvis nettleseren viser en nettverksfeil etter lagring, last listen på nytt og kontroller reservasjonen før du prøver samme handling igjen. Den kan allerede være lagret.
 
@@ -33,7 +33,7 @@ Hvis nettleseren viser en nettverksfeil etter lagring, last listen på nytt og k
 | Kansellert | Bestillingen er avlyst. Kapasitet og bordtildelinger frigjøres. |
 | Møtte ikke | Gjesten møtte ikke. Kapasitet og bordtildelinger frigjøres. |
 
-Kansellering og **Møtte ikke** kan sende SMS. Velg derfor riktig reservasjon og kontroller datoen før du endrer status. Sletting fjerner reservasjonen; bruk kansellering når du vil beholde historikken og varsle gjesten.
+Kansellering og **Møtte ikke** sender e-post til gjesten. Velg derfor riktig reservasjon og kontroller datoen før du endrer status. Sletting fjerner reservasjonen; bruk kansellering når du vil beholde historikken og varsle gjesten.
 
 Når en kansellert reservasjon gjenopprettes, kontrollerer systemet kapasiteten på nytt. Gamle bordtildelinger gjenbrukes ikke. Tildel bord på nytt før bekreftelse.
 
@@ -88,4 +88,4 @@ Systemet lar deg ikke slette din egen konto eller den siste administratoren. Opp
 
 ## Daglig kontroll
 
-Før servering: kontroller dagens meny, åpningstider, reservasjoner, kommentarer, bordtildelinger og mislykkede SMS-er. Etter servering: oppdater reservasjonene til riktig status og logg ut. Kontakt IT hvis lagring feiler, nettsiden er utilgjengelig eller SMS-levering er usikker. Ikke opprett en ny bestilling for å reparere en SMS-feil.
+Før servering: kontroller dagens meny, åpningstider, reservasjoner, kommentarer, bordtildelinger og mislykkede varsler. Etter servering: oppdater reservasjonene til riktig status og logg ut. Kontakt IT hvis lagring feiler, nettsiden er utilgjengelig eller SMS-levering er usikker. Ikke opprett en ny bestilling for å reparere en SMS-feil.

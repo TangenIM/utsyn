@@ -21,7 +21,13 @@ Use one `NAME=value` per line. Quotes are helpful for values with spaces or mult
 | `SETUP_TOKEN` | A second random secret, at least 16 characters; remove after first-user setup | First installation only |
 | `APP_URL` | Exact public HTTPS origin, or local HTTP origin during development | Always |
 | `TRUST_PROXY` | `true` only behind a trusted gateway that replaces the client-IP header and blocks direct access; otherwise `false` | Recommended explicit value |
-| `SMS_PROVIDER` | `disabled`, `twilio`, or `webhook` | Recommended explicit value |
+| `SMS_PROVIDER` | `email`, `disabled`, `twilio`, or `webhook` | Recommended explicit value |
+| `SMTP_HOST` | SMTP server, for example `smtp.gmail.com` | Email |
+| `SMTP_PORT` | `587` (STARTTLS, default) or `465` (TLS) | Email |
+| `SMTP_USER` | SMTP login, also the sender address | Email |
+| `SMTP_PASSWORD` | SMTP or app password | Email |
+| `SMTP_FROM` | Sender address if different from `SMTP_USER` | Optional |
+| `EMAIL_STAFF_RECIPIENTS` | Comma separated staff addresses for new bookings; overrides the admin setting | Optional |
 | `TWILIO_ACCOUNT_SID` | Account SID beginning with `AC`, from the school's Twilio account | Twilio SMS |
 | `TWILIO_AUTH_TOKEN` | Private auth token from that same account | Twilio SMS |
 | `TWILIO_FROM_NUMBER` | SMS-capable sender belonging to that account, in `+countrycode...` format | Twilio SMS |

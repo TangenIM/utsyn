@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         if (!body || typeof body !== 'object' || Array.isArray(body)) throw new InputError('Invalid booking');
         const guest_name = text(body.guest_name, 'name', 2, 100);
         const phone = normalizePhone(body.phone);
-        const email = text(body.email ?? '', 'email', 0, 254);
+        const email = text(body.email, 'email', 5, 254);
         if (!validateEmail(email)) throw new InputError('Invalid email');
         const guests_count = integer(body.guests_count, 'guest count', 1, 60);
         const date = validDate(body.date);

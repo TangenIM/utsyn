@@ -149,7 +149,7 @@ function BookingWizard() {
             setPhoneError(t('error_phone_invalid'));
             valid = false;
         }
-        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
             setEmailError(t('error_email_invalid'));
             valid = false;
         }
@@ -272,10 +272,10 @@ function BookingWizard() {
                                 {locale === 'no' ? 'Bestillingen er mottatt. Ta vare på koden nedenfor. Bordet bekreftes av restauranten.' : 'Your booking has been received. Keep the code below. The restaurant will confirm your table.'}
                             </p>
                             <p role="status">{smsStatus === 'delivered' || smsStatus === 'read'
-                                ? (locale === 'no' ? 'SMS-varslingen er levert.' : 'The SMS notification was delivered.')
+                                ? (locale === 'no' ? 'Bekreftelsen er levert.' : 'The confirmation was delivered.')
                                 : smsStatus === 'queued' || smsStatus === 'sent'
-                                ? (locale === 'no' ? 'SMS-varslingen er sendt til leverandøren.' : 'The SMS notification has been sent to the provider.')
-                                : (locale === 'no' ? 'SMS-levering kunne ikke bekreftes. Bestillingen er lagret. Ta vare på bestillingskoden.' : 'SMS delivery could not be confirmed. Your booking is saved. Keep your booking code.')}</p>
+                                ? (locale === 'no' ? 'Bekreftelsen er sendt til deg.' : 'The confirmation has been sent to you.')
+                                : (locale === 'no' ? 'Bekreftelsen kunne ikke sendes. Bestillingen er lagret. Ta vare på bestillingskoden.' : 'The confirmation could not be sent. Your booking is saved. Keep your booking code.')}</p>
                             <div className="confirmation-code">
                                 <span className="confirmation-code-label">{t('confirm_code')}</span>
                                 <span className="confirmation-code-value">{confirmationCode}</span>
@@ -507,7 +507,7 @@ function BookingWizard() {
                                         {phoneError && <span id="booking-phone-error" className="form-error" role="alert">{phoneError}</span>}
                                     </div>
                                     <div className="form-group">
-                                        <label htmlFor="booking-email" className="form-label">{t('book_email')}</label>
+                                        <label htmlFor="booking-email" className="form-label">{t('book_email')} *</label>
                                         <input
                                             id="booking-email"
                                             type="email"

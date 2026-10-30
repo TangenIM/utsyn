@@ -71,7 +71,7 @@ export default function InnstillingerPage() {
     'about_text_no', 'about_text_en',
     'address', 'phone', 'email',
     'max_capacity', 'booking_cutoff_minutes',
-    'sms_provider', 'sms_webhook_url',
+    'sms_provider', 'email_staff_recipients', 'sms_webhook_url',
     'sms_twilio_sid', 'sms_twilio_token', 'sms_twilio_from',
     'sms_template_received', 'sms_template_confirmed',
     'sms_template_cancelled', 'sms_template_noshow',
@@ -84,7 +84,7 @@ export default function InnstillingerPage() {
         Object.entries(settings)
           .filter(([key]) => allowedSettingKeys.has(key))
           .map(([key, value]) => {
-            if (typeof value === 'string' && ['sms_twilio_sid', 'sms_twilio_token', 'sms_twilio_from', 'sms_provider', 'sms_webhook_url'].includes(key)) {
+            if (typeof value === 'string' && ['sms_twilio_sid', 'sms_twilio_token', 'sms_twilio_from', 'sms_provider', 'sms_webhook_url', 'email_staff_recipients'].includes(key)) {
               return [key, value.trim()];
             }
             return [key, value];
@@ -245,15 +245,22 @@ export default function InnstillingerPage() {
             <div className="form-hint">Hindrer gjester fra å reservere for tett opp mot stengetid. F.eks. 60 = siste reservasjon 1 time før stenging.</div>
           </div>
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-             <label className="form-label">SMS Leverandør</label>
-             {settings.sms_environment_configured === 'true' && <p className="form-hint">Serverens miljøvariabler styrer SMS. Aktiv leverandør: {settings.sms_effective_provider}. Endringer nedenfor gjelder bare når miljøvariablene fjernes.</p>}
-             <select className="form-input" value={settings.sms_provider || 'webhook'} onChange={e => updateSetting('sms_provider', e.target.value)}>
+             <label className="form-label">Varslingskanal for gjester</label>
+             {settings.sms_environment_configured === 'true' && <p className="form-hint">Serverens miljøvariabler styrer varslingen. Aktiv kanal: {settings.sms_effective_provider}. Endringer nedenfor gjelder bare når miljøvariablene fjernes.</p>}
+             <select className="form-input" value={settings.sms_provider || 'email'} onChange={e => updateSetting('sms_provider', e.target.value)}>
+                <option value="email">E-post (anbefalt)</option>
                 <option value="disabled">Deaktivert</option>
-                <option value="webhook">Webhook (Make.com, Zapier, etc.)</option>
-                <option value="twilio">Twilio</option>
+                <option value="webhook">SMS via webhook (Make.com, Zapier, etc.)</option>
+                <option value="twilio">SMS via Twilio (reserve)</option>
              </select>
           </div>
-          {settings.sms_provider === 'twilio' ? (
+          {(settings.sms_provider || 'email') === 'email' ? (
+             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+               <label htmlFor="innstillinger-staff-email" className="form-label">Varsel til ansatte ved ny bestilling</label>
+               <input id="innstillinger-staff-email" className="form-input" value={settings.email_staff_recipients || ''} onChange={e => updateSetting('email_staff_recipients', e.target.value)} placeholder="navn@tangen.vgs.no, navn2@tangen.vgs.no" />
+               <div className="form-hint">Kommaseparerte e-postadresser. Gjesten får bekreftelse på e-posten som ble oppgitt ved bestilling. {settings.smtp_configured === 'true' ? 'SMTP er konfigurert på serveren.' : 'SMTP er ikke konfigurert. Sett SMTP_HOST, SMTP_USER og SMTP_PASSWORD i serverens miljøvariabler.'}</div>
+             </div>
+          ) : settings.sms_provider === 'twilio' ? (
              <>
                <div className="form-group">
                  <label htmlFor="innstillinger-field-12" className="form-label">Twilio Account SID</label>
@@ -268,26 +275,26 @@ export default function InnstillingerPage() {
                  <input id="innstillinger-field-14" className="form-input" value={settings.sms_twilio_from || ''} onChange={e => updateSetting('sms_twilio_from', e.target.value)} placeholder="+123456789" />
                </div>
              </>
-          ) : (
+          ) : settings.sms_provider === 'webhook' ? (
              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                <label htmlFor="innstillinger-field-15" className="form-label">SMS Webhook URL (valgfritt)</label>
                <input id="innstillinger-field-15" className="form-input" value={settings.sms_webhook_url || ''} onChange={e => updateSetting('sms_webhook_url', e.target.value)} placeholder="https://..." />
              </div>
-          )}
+          ) : null}
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-            <label className="form-label">SMS Mal - Ny booking (Bruk {"{kode}"}, {"{dato}"}, {"{tid}"}, {"{antall}"})</label>
+            <label className="form-label">Meldingsmal - Ny booking (Bruk {"{kode}"}, {"{dato}"}, {"{tid}"}, {"{antall}"})</label>
             <textarea className="form-textarea" value={settings.sms_template_received || ''} onChange={e => updateSetting('sms_template_received', e.target.value)} rows={3} />
           </div>
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-            <label className="form-label">SMS Mal - Bekreftelse/Bord tildelt (Bruk {"{kode}"}, {"{dato}"}, {"{tid}"}, {"{antall}"})</label>
+            <label className="form-label">Meldingsmal - Bekreftelse/Bord tildelt (Bruk {"{kode}"}, {"{dato}"}, {"{tid}"}, {"{antall}"})</label>
             <textarea className="form-textarea" value={settings.sms_template_confirmed || ''} onChange={e => updateSetting('sms_template_confirmed', e.target.value)} rows={3} />
           </div>
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-            <label className="form-label">SMS Mal - Kansellert (Bruk {"{kode}"}, {"{dato}"}, {"{tid}"}, {"{antall}"})</label>
+            <label className="form-label">Meldingsmal - Kansellert (Bruk {"{kode}"}, {"{dato}"}, {"{tid}"}, {"{antall}"})</label>
             <textarea className="form-textarea" value={settings.sms_template_cancelled || ''} onChange={e => updateSetting('sms_template_cancelled', e.target.value)} rows={3} />
           </div>
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-            <label className="form-label">SMS Mal - Møtte ikke (Bruk {"{kode}"}, {"{dato}"}, {"{tid}"}, {"{antall}"})</label>
+            <label className="form-label">Meldingsmal - Møtte ikke (Bruk {"{kode}"}, {"{dato}"}, {"{tid}"}, {"{antall}"})</label>
             <textarea className="form-textarea" value={settings.sms_template_noshow || ''} onChange={e => updateSetting('sms_template_noshow', e.target.value)} rows={3} />
           </div>
         </div>

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateTimeSlots, generateConfirmationCode, restaurantDate, validatePhone } from '../src/lib/utils.ts';
 import { date, integer, phone, password, timeSlots } from '../src/lib/validation.ts';
+import { recipients, escapeHtml } from '../src/lib/email.ts';
 import { clientIp } from '../src/lib/client-ip.ts';
 
 test('proxy addresses require explicit trust and ignore client-added first hops', () => {
@@ -44,4 +45,10 @@ test('time generation terminates on invalid settings and normalizes custom slots
     assert.equal(timeSlots('18:00, 12:00, 18:00'), '12:00, 18:00');
     assert.throws(() => timeSlots('12:00,99:30'));
     assert.match(generateConfirmationCode(), /^[A-F0-9]{12}$/);
+});
+
+test('staff recipient list drops invalid and duplicate addresses and html is escaped', () => {
+    assert.deepEqual(recipients('a@x.no, b@x.no;a@x.no bad'), ['a@x.no', 'b@x.no']);
+    assert.deepEqual(recipients(undefined), []);
+    assert.equal(escapeHtml('<b>"&\'</b>'), '&lt;b&gt;&quot;&amp;&#39;&lt;/b&gt;');
 });

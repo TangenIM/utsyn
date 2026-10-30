@@ -167,7 +167,8 @@ async function initializeSchema(sql: postgres.TransactionSql) {
         { key: 'max_capacity', value: '60' },
         { key: 'booking_cutoff_minutes', value: '45' },
         { key: 'time_slot_interval', value: '15' },
-        { key: 'sms_provider', value: 'disabled' },
+        { key: 'sms_provider', value: 'email' },
+        { key: 'email_staff_recipients', value: '' },
         { key: 'sms_webhook_url', value: '' },
         { key: 'sms_twilio_sid', value: '' },
         { key: 'sms_twilio_token', value: '' },
@@ -182,7 +183,8 @@ async function initializeSchema(sql: postgres.TransactionSql) {
     }
 
     // Ensure new templates exist for older DBs
-    await sql`INSERT INTO settings (key, value) VALUES 
+    await sql`INSERT INTO settings (key, value) VALUES
+      ('email_staff_recipients', ''), 
       ('sms_template_cancelled', 'Din reservasjon hos Restaurant Utsyn for {dato} kl {tid} er dessverre kansellert.'),
       ('sms_template_noshow', 'Vi registrerte at du ikke møtte opp til din reservasjon hos Restaurant Utsyn for {dato} kl {tid}.')
     ON CONFLICT DO NOTHING`;

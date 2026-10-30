@@ -47,14 +47,14 @@ try {
     await request('/api/users','GET',undefined,staffCookie,403);
     await request('/api/users/'+staff.id,'DELETE',undefined,cookie);
     await request('/api/reservations','GET',undefined,staffCookie,401);
-    await request('/api/settings','PUT',{max_capacity:'12',time_slot_interval:'15',sms_provider:'disabled',sms_twilio_token:'test-token-never-use-in-production'},cookie);
+    await request('/api/settings','PUT',{max_capacity:'12',time_slot_interval:'15',sms_provider:'disabled',email_staff_recipients:'staff@example.com',sms_twilio_token:'test-token-never-use-in-production'},cookie);
     const settings = (await request('/api/settings?scope=admin','GET',undefined,cookie)).result;
     assert.equal(settings.sms_effective_provider,'disabled','Test server must use SMS_PROVIDER=disabled to avoid sending messages'); checks++;
     assert.equal(settings.sms_twilio_token,undefined); assert.equal(settings.sms_twilio_token_configured,'true'); checks++;
     await request('/api/settings','PUT',{sms_twilio_token:''},cookie);
     const [token] = await sql`SELECT value FROM settings WHERE key = 'sms_twilio_token'`;
     assert.equal(token.value,'test-token-never-use-in-production'); checks++;
-    for (const body of [{max_capacity:'0'},{time_slot_interval:'0'},{time_slot_interval:{}},{sms_provider:'unknown'},{sms_webhook_url:'http://localhost'}]) await request('/api/settings','PUT',body,cookie,400);
+    for (const body of [{max_capacity:'0'},{time_slot_interval:'0'},{time_slot_interval:{}},{sms_provider:'unknown'},{email_staff_recipients:'not-an-address'},{sms_webhook_url:'http://localhost'}]) await request('/api/settings','PUT',body,cookie,400);
     await request('/api/settings','PUT',{max_capacity:'12'},cookie,403,{ Origin:'https://untrusted.example' });
     const day = { day_of_week:1, open_time:'12:00', close_time:'14:00', time_slots:'12:00,13:00', is_active:true };
     await request('/api/open-days','PUT',[day],cookie);
@@ -69,7 +69,7 @@ try {
     assert.deepEqual(available.slots.map(s => s.time),['12:00','13:00','14:00']); checks++;
     await request('/api/availability?date=2030-02-30','GET',undefined,'',400);
     const booking = {guest_name:'Utsyn integration guest',phone:'+4712345678',email:'guest@example.com',guests_count:4,date:selected,time_slot:'12:00',comment:'Test allergies',locale:'en'};
-    for (const invalid of [{...booking,guest_name:{}},{...booking,guests_count:'4'},{...booking,guests_count:1.5},{...booking,time_slot:'99:00'},{...booking,date:'2030-02-30'},{...booking,date:'2020-01-01'},{...booking,time_slot:'11:00'},null]) await request('/api/reservations','POST',invalid,'',400);
+    for (const invalid of [{...booking,email:''},{...booking,guest_name:{}},{...booking,guests_count:'4'},{...booking,guests_count:1.5},{...booking,time_slot:'99:00'},{...booking,date:'2030-02-30'},{...booking,date:'2020-01-01'},{...booking,time_slot:'11:00'},null]) await request('/api/reservations','POST',invalid,'',400);
     const key = randomUUID();
     const first = (await request('/api/reservations','POST',booking,'',201,{'Idempotency-Key':key})).result;
     assert.equal(first.sms.status,'disabled'); checks++;

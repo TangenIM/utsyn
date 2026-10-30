@@ -17,7 +17,11 @@ try { origin = new URL(process.env.APP_URL); } catch { /* reported below */ }
 check('APP_URL is an origin without credentials or a path', !!origin && !origin.username && !origin.password && origin.pathname === '/' && !origin.search && !origin.hash);
 check('Production APP_URL uses HTTPS', process.env.NODE_ENV !== 'production' || origin?.protocol === 'https:');
 const provider = process.env.SMS_PROVIDER || 'disabled';
-check('SMS_PROVIDER is disabled, twilio or webhook', ['disabled','twilio','webhook'].includes(provider));
+check('SMS_PROVIDER is email, disabled, twilio or webhook', ['email','disabled','twilio','webhook'].includes(provider));
+if (provider === 'email') {
+    check('SMTP host, user and password configured', !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD));
+    check('SMTP port is 587 or 465', ['587','465'].includes(process.env.SMTP_PORT || '587'));
+}
 if (provider === 'twilio') {
     check('Twilio account SID configured', /^AC[0-9a-f]{32}$/i.test(process.env.TWILIO_ACCOUNT_SID || ''));
     check('Twilio auth token configured', !!process.env.TWILIO_AUTH_TOKEN);
@@ -29,5 +33,5 @@ if (process.env.DATABASE_URL) {
     catch { check('PostgreSQL connection (check URL, TLS certificate and firewall)',false); }
     finally { await sql.end({timeout:5}); }
 }
-console.log('No secrets were printed. No SMS was sent. Database schema is created on the first API request.');
+console.log('No secrets were printed. No email or SMS was sent. Database schema is created on the first API request.');
 process.exitCode = failed ? 1 : 0;

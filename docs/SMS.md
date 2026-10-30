@@ -1,5 +1,7 @@
 # SMS and Twilio
 
+SMS is the backup channel. Email is the default; see [Email notifications](EMAIL.md). To use SMS, select it under **Innstillinger** or set `SMS_PROVIDER=twilio`. Guests still enter an email address when booking.
+
 The website sends notifications for four events: booking received, table confirmed, booking cancelled, and guest marked no-show. Completing or deleting a reservation is not a notification event. An SMS failure does not delete or undo the reservation.
 
 ## Enable Twilio step by step
