@@ -190,7 +190,7 @@ export default function BordPage() {
 
         if (!selectedReservation) {
             setEditingTable(table || null);
-            setEditCapacity(table?.capacity || 4);
+            setEditCapacity(table?.capacity || 2);
             setEditIsActive(!!table?.is_active);
             return;
         }

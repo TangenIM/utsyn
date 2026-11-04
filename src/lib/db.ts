@@ -79,7 +79,7 @@ async function initializeSchema(sql: postgres.TransactionSql) {
     await sql`CREATE TABLE IF NOT EXISTS tables_config (
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
-      capacity INTEGER NOT NULL DEFAULT 4,
+      capacity INTEGER NOT NULL DEFAULT 2,
       is_active BOOLEAN NOT NULL DEFAULT TRUE
     )`;
 
@@ -209,9 +209,17 @@ async function initializeSchema(sql: postgres.TransactionSql) {
     if (Number(tablesCheck[0].count) === 0) {
       const tableRows = [];
       for (let i = 1; i <= 32; i++) {
-        tableRows.push({ name: i.toString(), capacity: 4, is_active: true });
+        tableRows.push({ name: i.toString(), capacity: 2, is_active: true });
       }
       await sql`INSERT INTO tables_config ${sql(tableRows, 'name', 'capacity', 'is_active')} ON CONFLICT DO NOTHING`;
+    }
+
+    // One-time: the old default was 4 seats per table, the restaurant seats 2.
+    const [tableFix] = await sql`INSERT INTO settings (key, value) VALUES ('migration_table_capacity_2', 'done') ON CONFLICT DO NOTHING RETURNING key`;
+    if (tableFix) {
+      await sql`UPDATE tables_config SET capacity = 2 WHERE capacity = 4`;
+      await sql`UPDATE reservations r SET status = 'needs_seat' WHERE status = 'confirmed'
+        AND guests_count > (SELECT COALESCE(SUM(t.capacity),0) FROM table_assignments a JOIN tables_config t ON t.id = a.table_id WHERE a.reservation_id = r.id AND t.is_active)`;
     }
 
   } catch (error) {

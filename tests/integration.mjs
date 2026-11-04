@@ -93,6 +93,7 @@ try {
     await request('/api/sms','POST',{id:attempt.id},cookie,409);
     await request('/api/reservations/'+first.id+'/confirm','POST',undefined,cookie,409);
     await request('/api/tables/assignments','POST',{reservation_id:first.id,table_id:1},cookie);
+    await request('/api/tables/assignments','POST',{reservation_id:first.id,table_id:4},cookie);
     await request('/api/reservations/'+first.id+'/confirm','POST',undefined,cookie);
     await request('/api/reservations/'+first.id+'/confirm','POST',undefined,cookie,409);
     const [noticeBefore] = await sql`SELECT COUNT(*) AS count FROM sms_notifications WHERE reservation_id = ${first.id}`;
