@@ -19,7 +19,7 @@ export async function availability(sql: postgres.Sql | postgres.TransactionSql, 
     const settings = Object.fromEntries(rows.map(row => [row.key, row.value]));
     const interval = Number(settings.time_slot_interval || 15);
     const cutoff = Number(settings.booking_cutoff_minutes || 45);
-    const maxCapacity = Number(settings.max_capacity || 60);
+    const maxCapacity = Number(settings.max_capacity || 64);
     const custom = closure ? closure.time_slots : day?.time_slots;
     let times: string[] = custom?.trim() ? custom.split(',').map((s: string) => s.trim()).filter((s: string) => TIME.test(s)) :
         day?.is_active ? generateTimeSlots(day.open_time, day.close_time, interval, cutoff) : [];

@@ -6,7 +6,7 @@ import { text, InputError, apiError } from '@/lib/validation';
 
 const allowed = new Set(['hero_title_no','hero_title_en','hero_subtitle_no','hero_subtitle_en','about_text_no','about_text_en','address','phone','email','max_capacity','booking_cutoff_minutes','time_slot_interval','sms_provider','email_staff_recipients','sms_webhook_url','sms_twilio_sid','sms_twilio_token','sms_twilio_from','sms_template_received','sms_template_confirmed','sms_template_cancelled','sms_template_noshow','currency','price_main','price_dessert']);
 const publicKeys = new Set([...allowed].filter(key => !key.startsWith('sms_') && key !== 'email_staff_recipients'));
-const ranges: Record<string, [number, number]> = { max_capacity: [1,60], booking_cutoff_minutes: [0,1440], time_slot_interval: [1,240], price_main: [0,100000], price_dessert: [0,100000] };
+const ranges: Record<string, [number, number]> = { max_capacity: [1,200], booking_cutoff_minutes: [0,1440], time_slot_interval: [1,240], price_main: [0,100000], price_dessert: [0,100000] };
 
 export async function GET(request: NextRequest) {
     try {

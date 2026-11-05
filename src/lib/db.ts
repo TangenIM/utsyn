@@ -164,7 +164,7 @@ async function initializeSchema(sql: postgres.TransactionSql) {
         { key: 'address', value: 'Tangen 21, 1. etg' },
         { key: 'phone', value: '' },
         { key: 'email', value: '' },
-        { key: 'max_capacity', value: '60' },
+        { key: 'max_capacity', value: '64' },
         { key: 'booking_cutoff_minutes', value: '45' },
         { key: 'time_slot_interval', value: '15' },
         { key: 'sms_provider', value: 'email' },
@@ -213,6 +213,10 @@ async function initializeSchema(sql: postgres.TransactionSql) {
       }
       await sql`INSERT INTO tables_config ${sql(tableRows, 'name', 'capacity', 'is_active')} ON CONFLICT DO NOTHING`;
     }
+
+    // One-time: the restaurant has 32 two-seat tables, so 64 seats. Only the old default is replaced.
+    const [capacityFix] = await sql`INSERT INTO settings (key, value) VALUES ('migration_max_capacity_64', 'done') ON CONFLICT DO NOTHING RETURNING key`;
+    if (capacityFix) await sql`UPDATE settings SET value = '64' WHERE key = 'max_capacity' AND value = '60'`;
 
     // One-time: the old default was 4 seats per table, the restaurant seats 2.
     const [tableFix] = await sql`INSERT INTO settings (key, value) VALUES ('migration_table_capacity_2', 'done') ON CONFLICT DO NOTHING RETURNING key`;

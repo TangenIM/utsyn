@@ -44,7 +44,7 @@ Use the committed lockfile. Upgrade related packages together, then verify compa
 
 The database schema is defined in `src/lib/db.ts`, not an external schema dump. On initialization a transaction lock serializes changes. SQL parameters are bound through the database library rather than concatenating guest input.
 
-- IDs, guest counts, table capacities, and menu prices use integers. APIs expecting a number reject a numeric string. Guest counts are 1–60; restaurant capacity can be lower.
+- IDs, guest counts, table capacities, and menu prices use integers. APIs expecting a number reject a numeric string. Guest counts per booking are 1–60. Restaurant capacity (`max_capacity`, default 64 for 32 two-seat tables) is set in **Innstillinger**, 1–200. Staff combine tables by assigning several to one booking.
 - Dates use validated `YYYY-MM-DD` text and slots use `HH:mm` text. Availability and booking cutoff use Europe/Oslo. Do not compare them as the host's local timezone.
 - Boolean API fields must be JSON `true`/`false`, not strings. Admin settings are a separate string-valued key/value interface with explicit range validation.
 - Prices are whole currency units, not floating-point values or fractional øre.
