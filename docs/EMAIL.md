@@ -31,6 +31,10 @@ EMAIL_STAFF_RECIPIENTS=staff1@example.no,staff2@example.no
 
 The body text comes from the four templates in **Innstillinger** (Norwegian bookings) or the built-in English text. Placeholders are `{kode}`, `{dato}`, `{tid}`, and `{antall}`. The email adds a table with date, time, guests, and code.
 
+## Send a test email
+
+Open **Innstillinger**, choose the email channel, type an address in **Send test-e-post**, and press **Send test**. The test uses the server's SMTP values, so it checks the setup without making a booking. It is limited to 5 tests per 10 minutes.
+
 ## Check delivery
 
 Open **Varslingslogg** on the reservations page. **Sendt** means the SMTP server accepted the message. Delivery to the inbox cannot be confirmed from here.
@@ -43,5 +47,12 @@ Open **Varslingslogg** on the reservations page. **Sendt** means the SMTP server
 | `invalid_recipient` | Address rejected | Check the guest's address |
 | `no_recipient` | Old booking without email | Contact the guest by phone |
 | `smtp_error` | Other SMTP failure | Check the server log |
+
+If a person says they got no email:
+
+1. Run the test above to their address. If it arrives, SMTP works.
+2. Check spam. Gmail may file mail from a new sender there at first.
+3. Staff only get the new-booking message if their address is in `EMAIL_STAFF_RECIPIENTS` or **Varsel til ansatte**. A guest address only receives mail for that guest's own booking.
+4. Check **Varslingslogg** for an error code from the table above.
 
 Use **Prøv igjen** after fixing the cause. Staff notification failures are written to the server log only.

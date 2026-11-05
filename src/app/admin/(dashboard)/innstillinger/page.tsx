@@ -28,6 +28,8 @@ export default function InnstillingerPage() {
   const [closures, setClosures] = useState<Closure[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
+  const [testTo, setTestTo] = useState('');
+  const [testBusy, setTestBusy] = useState(false);
 
   // New closure form
   const [newClosureDate, setNewClosureDate] = useState('');
@@ -78,6 +80,15 @@ export default function InnstillingerPage() {
     'currency', 'price_main', 'price_dessert',
     'time_slot_interval',
   ]);
+  const sendTestEmail = async () => {
+    setTestBusy(true);
+    try {
+      const res = await fetch('/api/email-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: testTo.trim() }) });
+      const data = await res.json().catch(() => ({}));
+      showToast(res.ok ? 'Test-e-post sendt. Sjekk innboks og søppelpost.' : 'Test feilet: ' + (data.error_code || data.error || res.status));
+    } catch { showToast('Kunne ikke sende test-e-post.'); }
+    finally { setTestBusy(false); }
+  };
   const saveSettings = async () => {
     try {
       const payload = Object.fromEntries(
@@ -255,11 +266,21 @@ export default function InnstillingerPage() {
              </select>
           </div>
           {(settings.sms_provider || 'email') === 'email' ? (
+             <>
              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                <label htmlFor="innstillinger-staff-email" className="form-label">Varsel til ansatte ved ny bestilling</label>
                <input id="innstillinger-staff-email" className="form-input" value={settings.email_staff_recipients || ''} onChange={e => updateSetting('email_staff_recipients', e.target.value)} placeholder="navn@tangen.vgs.no, navn2@tangen.vgs.no" />
                <div className="form-hint">Kommaseparerte e-postadresser. Gjesten får bekreftelse på e-posten som ble oppgitt ved bestilling. {settings.smtp_configured === 'true' ? 'SMTP er konfigurert på serveren.' : 'SMTP er ikke konfigurert. Sett SMTP_HOST, SMTP_USER og SMTP_PASSWORD i serverens miljøvariabler.'}</div>
              </div>
+             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+               <label htmlFor="innstillinger-test-email" className="form-label">Send test-e-post</label>
+               <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+                 <input id="innstillinger-test-email" className="form-input" type="email" style={{ flex: '1 1 240px' }} value={testTo} onChange={e => setTestTo(e.target.value)} placeholder="navn@tangen.vgs.no" />
+                 <button type="button" className="btn btn-secondary" onClick={sendTestEmail} disabled={testBusy || !testTo.trim()}>{testBusy ? 'Sender...' : 'Send test'}</button>
+               </div>
+               <div className="form-hint">Bruker serverens SMTP-oppsett, uavhengig av valgt kanal. Lagre innstillinger først.</div>
+             </div>
+             </>
           ) : settings.sms_provider === 'twilio' ? (
              <>
                <div className="form-group">

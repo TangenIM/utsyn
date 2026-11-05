@@ -36,6 +36,7 @@ try {
     await request('/api/auth','POST',{username:createdAdmin.username,password:secret},'',200,{'x-forwarded-for':'192.0.2.100'});
     await request('/api/users','GET',undefined,'',403);
     await request('/api/settings?scope=admin','GET',undefined,'',403);
+    await request('/api/email-test','POST',{to:'a@example.com'},'',401);
     const publicSettings = (await request('/api/settings')).result;
     assert.ok(Object.keys(publicSettings).every(key => !key.startsWith('sms_') && key !== 'email_staff_recipients')); checks++;
     await request('/api/users','POST',{username:'bad',password:'short',role:'staff'},cookie,400);
