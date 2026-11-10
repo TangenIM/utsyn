@@ -250,7 +250,7 @@ export default function BordPage() {
             const res = await fetch(`/api/reservations/${id}/confirm`, { method: 'POST' });
             if (res.ok) {
                 const data = await res.json();
-                showToast(data.sms?.status === 'failed' ? 'Reservasjon bekreftet. SMS feilet: ' + (data.sms.error_code || '') : data.sms?.status === 'disabled' ? 'Reservasjon bekreftet. SMS er deaktivert.' : 'Reservasjon bekreftet. SMS sendt til leverandøren.');
+                showToast(data.sms?.status === 'failed' ? 'Reservasjon bekreftet. Varsling feilet: ' + (data.sms.error_code || '') : data.sms?.status === 'disabled' ? 'Reservasjon bekreftet. Varsling er deaktivert.' : 'Reservasjon bekreftet. Bekreftelse sendt til gjesten.');
                 fetchData();
                 fetchAllReservations();
             } else {
@@ -258,7 +258,7 @@ export default function BordPage() {
             }
         } catch (err) {
             console.error(err);
-            showToast('Kontroller reservasjonen og SMS-loggen før du prøver igjen.');
+            showToast('Kontroller reservasjonen og varslingsloggen før du prøver igjen.');
         }
     };
 
@@ -406,7 +406,7 @@ export default function BordPage() {
                         <ol style={{ margin: '4px 0 0 16px', padding: 0 }}>
                             <li>Klikk på en reservasjon i listen under</li>
                             <li>Klikk på et bord på kartet for å tildele</li>
-                            <li>Klikk «Bekreft &amp; Send SMS» når ferdig</li>
+                            <li>Klikk «Bekreft &amp; send e-post» når ferdig</li>
                         </ol>
                         <div style={{ marginTop: '6px', fontStyle: 'italic' }}>Klikk et bord uten valgt reservasjon for å endre bordets innstillinger.</div>
                     </div>
@@ -467,7 +467,7 @@ export default function BordPage() {
                                                         confirmReservation(r.id);
                                                     }}
                                                 >
-                                                    <IconCheck size={16} /> Bekreft & Send SMS
+                                                    <IconCheck size={16} /> Bekreft & send e-post
                                                 </button>
                                             </div>
                                         )}
